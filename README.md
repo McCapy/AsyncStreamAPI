@@ -121,3 +121,45 @@ These are the things that directly morph results and act as debugging or general
   > Delays the given executor for `ms` milliseconds if the `predicate` returns true, it takes in the result of the previous `VALUETASK`
 - `Executor#skipIf(Predicate<T> predicate, int skipCount)`
   > Skips `skipCount` tasks, if the given `predicate` is true, it takes in the result of the previous `VALUETASK`
+- `Executor#fork(Executor<R> executor)`
+  > This starts the supplied `executor` whenever it reaches the tasknode for it, you can optionally `gather` non-independent forked tasks using                        `Executor#gather()` or its sister method.
+- `Executor#fork(Function<T,Executor<R>> function)`
+  > This runs the function whenever the given node is executed. The value from the previous `VALUETASK` is passed in, it returns an Executor from there, which is    then started whenever the function finishes execution.
+- `Executor#gather()`
+  > Gathers are sidetasks and waits for all of them to complete. Returns the result of the previous `VALUETASK`
+- `Executor#gather(Consumer<Object[]> consumer)`
+  > Gathers all sidetasks & their results into an Object[] array, which is passed into the consumer and is consumed. It returns the result of the previous `VALUETASK`
+- `Executor#gather(Function<Object[],R> function)`
+  > Takes in the result of all joined sidetasks, passing them into the function and returning a value from that function.
+# TaskNodeAPI
+> The TaskNodeAPI is entirely arround using the TaskQueue and Executor respectively to create your own methods that can be used with the ExecutorAPI, while it       isn't very flexible, you're confined to a specific method to add both task forks (explained later) and core-tasks.
+
+### TaskNodeAPI
+- `Executor#addTask(TaskNode node)`
+- `Executor#addSideTask(ForkNode node)`
+  > Each of these methods respectively define how you add tasks to a taskqueue, although TaskNode... what is that? the TaskNode is a public interface which you        can implement and change its functionality. An example TaskNode will be shown below for the .map() operation, keep in mind it does not have ANY error              handling, if you make an actual TaskNode for your personal use i **HEAVILY** reccomend adding your own error handling referencing other tasknodes to infer how     to do it.
+  ```java
+  public class MapNodeExample implements TaskNode {
+    final Function<Object,Object> function;
+    public MapNodeExample(Function<Object,Object> function) {
+        this.function = function;
+    }
+    @Override
+    public Object execute(Object current, TaskQueue queue) {
+        return function.apply(current);
+    }
+
+    @Override
+    public Class<MapNodeExample> identity() {
+        return MapNodeExample.class;
+    }
+  }
+```java 
+void main() {
+  Executor<Integer> executor =
+    new Executor(1)
+      .addTask(new MapNodeExample((item) -> item += 2));
+}
+```
+> While this isn't amazingly elegant, it is the only feasible way to add your own operations easily. `item` in this case automatically is defined as the previous `VALUETASK`'s result, returning something means that this is also a value task.
+> I **HEAVILY** encourage you to look through other tasknodes as you will not understand how to implement your own solutions without doing so. They explain things like error handling, among other things that you MUST know, like how to correctly skip forward tasks, how to skip backwards tasks, etc.
