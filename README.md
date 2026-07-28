@@ -1,10 +1,10 @@
 # ExecutorAPI
-> The ExecutorAPI is paired with another API called the TaskNodeAPI, both of these API's respectively enable the creation of unique TaskNode's to fit any situation where you might need them, in the scenario where an operation with no accompanying method or TaskNode does not exist this will help greatly.
+> The ExecutorAPI is paired with another API called the TaskNodeAPI, both of these API's respectively enable the creation of unique api.TaskNode's to fit any situation where you might need them, in the scenario where an operation with no accompanying method or api.TaskNode does not exist this will help greatly.
 
 ## Understanding
 To begin we must understand what the language inside the API means, we will go over EVERY method in the ExecutorAPI and the TaskNodeAPI respectively. Some methods will be considered `volatile` or `valuetasks` this mainly applies to TaskNodes which is where this language is most common, although to users that are NOT using the TaskNodeAPI this will just be simplified to "does this return something new?" and "does this throw an error that MUST be caught?"
 
-Although there are some exceptions to this, some methods can be marked volatile (ie their use is unstable and **CAN** throw errors, if you happen to do something in a TaskNode that has the potential to throw an error, that automatically makes it a `volatile` task, meaning you should implicitly either, retry the task
+Although there are some exceptions to this, some methods can be marked volatile (ie their use is unstable and **CAN** throw errors, if you happen to do something in a api.TaskNode that has the potential to throw an error, that automatically makes it a `volatile` task, meaning you should implicitly either, retry the task
 (explained later) **OR** do an errorCatch() and add a default value or just outright cancel the task IF there is an error (explained later as well)
 
 Now for the actual documentation. We will start with the ExecutorAPI and move onto the TaskNodeAPI and its internals afterwards as it's quite hard to understand without the existence of the other TaskNodes and what they do to avoid pointless creation of a tasknode.
@@ -42,7 +42,7 @@ We will also cover how to transform these status's.
 And that is all for status's. Now we will move on to operations. This is where we get the ability to change data, and execute tasks.
 
 - `Executor#loop(Function<T,R> function,int iterations)` **VALUETASK**
-  > This is a very basic operation. a simple loop, it loops a specific amount of times and executes the supplied `function` taking in the previous value it          returns a new value which is passed into the next function, if there is no next function (ie all iterations are complete) it will simply return the value to be    used in the next TaskNode
+  > This is a very basic operation. a simple loop, it loops a specific amount of times and executes the supplied `function` taking in the previous value it          returns a new value which is passed into the next function, if there is no next function (ie all iterations are complete) it will simply return the value to be    used in the next api.TaskNode
 - `Executor#loop(int loops, int tasksAhead)` **VALUETASK**
   > This is very different from the previous loop. You will notice it does not take in a function, rather it takes in a `tasksAhead` integer, this loops from the    start which is defined as the .loop()'s location in the queue, and goes ahead and repeats all tasknodes in that bound `loops` times. Or until it reaches an        error.
 - `Executor#doWhile(Predicate<T> predicate, int tasksAhead)` **VALUETASK**
