@@ -132,7 +132,7 @@ public record AsyncStream<T>(StreamScope scope) {
 
     public AsyncStream<T> peek(Consumer<T> consumer) {
         check();
-        scope.addTask(new ForEachNode<>(consumer));
+        scope.addTask(new PeekNode<>(consumer));
         return this;
     }
 
