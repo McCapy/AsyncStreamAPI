@@ -1,6 +1,7 @@
 package org.refined;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -8,7 +9,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
-@SuppressWarnings({"BooleanMethodIsAlwaysInverted", "unused", "ResultOfMethodCallIgnored", "rawtypes"})
+@SuppressWarnings({"BooleanMethodIsAlwaysInverted", "unused", "ResultOfMethodCallIgnored", "rawtypes", "MethodDoesntCallSuperMethod", "unchecked"})
 public final class StreamScope {
     private static final byte UNSTARTED = 2;
     private static final byte STARTED = 1;
@@ -62,6 +63,7 @@ public final class StreamScope {
 
     void start() {
         if (!isUnstarted()) return;
+        if (onStart != null) onStart.run();
         run();
     }
 
@@ -86,7 +88,7 @@ public final class StreamScope {
         return current;
     }
 
-    void cancel() {
+    public void cancel() {
         if (isCompleted()) return;
         if (isCancelled()) return;
         if (onCancel != null) onCancel.accept(error);
@@ -97,7 +99,7 @@ public final class StreamScope {
         }
     }
 
-    void run() {
+    public void run() {
         if (name != null) {
             worker.setName(name);
         }
@@ -113,12 +115,21 @@ public final class StreamScope {
                 if (taskIndex == tasks.size()) break;
             }
             latch.countDown();
+            if (onComplete != null) onComplete.accept(current);
         });
 
     }
 
     public void addTask(TaskNode node) {
         tasks.add(node);
+    }
+
+    public void addTasks(TaskNode... nodes) {
+        tasks.addAll(List.of(nodes));
+    }
+
+    public void addTasks(Collection<TaskNode> nodes) {
+        tasks.addAll(nodes);
     }
 
     public void insertTask(TaskNode node, int index) {
@@ -151,5 +162,46 @@ public final class StreamScope {
 
     public void modifyIndex(int edit) {
         taskIndex += edit;
+    }
+
+    public StreamScope setTask(int index,TaskNode node) {
+        tasks.set(index,node);
+        return this;
+    }
+
+    Consumer<Object[]> onComplete;
+    Runnable onStart;
+
+    public Consumer<?> onComplete() {
+        return onComplete;
+    }
+
+    public <T> void onComplete(Consumer<T[]> onComplete) {
+        this.onComplete = (Consumer<Object[]>) ((Object) onComplete);
+    }
+
+    public void onComplete(Runnable runnable) {
+        this.onComplete = (items) -> runnable.run();
+    }
+
+    public Runnable onStart() {
+        return onStart;
+    }
+
+    public void onStart(Runnable onStart) {
+        this.onStart = onStart;
+    }
+
+    public Consumer<RuntimeException> onCancel() {
+        return onCancel;
+    }
+
+    @Override
+    public Object clone() {
+        StreamScope scope = new StreamScope();
+        scope.addTasks(this.getTasks());
+        scope.named(this.getId());
+
+        return scope;
     }
 }

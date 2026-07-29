@@ -29,10 +29,26 @@ public record AsyncStream<T>(StreamScope scope) {
      * have to check for both nulls & errors if an error is thrown
      * or likewise a safety check using .catchError() and .ifNull()
      *
+     * It should be known that when .fork(...) it will be treated as
+     * a foreign stream, that is until it has been joined, post join
+     * will result in them effectively being fused together, although
+     * this fusing does come with some fine print. It is still
+     * very simple to use. **TO BE COMPLETED
+     *
+     * All values inside the AsyncStream<T> are considered Optional<T[]> inherently.
+     *
+     * Upcoming features:
+     * - .fork()
+     * - .gather()
+     * - .collect()
+     * - .independentFork()
+     * - A better return value from the .join() and similar methods, which will return a version
+     *   of the Optional class, although a much more refined, better version of it, which will
+     *   much more effectively work for the given task, to manage null, with ease, readably.
      */
 
-    private static final String ERROR =
-        "Operations cannot be added post-start, unless enacted by a TaskNode.";
+    private static final RuntimeException ERROR =
+        new RuntimeException("Operations cannot be added post-start, unless enacted by a TaskNode.");
 
     /**
      * @param id The String ID
@@ -79,7 +95,7 @@ public record AsyncStream<T>(StreamScope scope) {
     }
     
     private void check() throws RuntimeException {
-        if (!scope.isUnstarted()) throw new RuntimeException(ERROR);
+        if (!scope.isUnstarted()) throw ERROR;
     }
     
     public <R> AsyncStream<R> map(Function<T,R> function) {
@@ -160,4 +176,39 @@ public record AsyncStream<T>(StreamScope scope) {
         return this;
     }
 
+    public <R> AsyncStream<R> loop(int repetitions,AsyncStream<R> stream) {
+        check();
+        scope.addTask(new LoopNode<R,T>(repetitions,stream));
+        return new AsyncStream<>(scope);
+    }
+
+    public AsyncStream<T> submit(Runnable runnable) {
+        check();
+        scope.addTask(new SubmitNode<T>(runnable));
+        return this;
+    }
+
+    public AsyncStream<T> cancelIfAll(Predicate<T> predicate) {
+        check();
+        scope.addTask(new CancelIfAllNode<>(predicate));
+        return this;
+    }
+
+    public AsyncStream<T> cancelIfAny(Predicate<T> predicate) {
+        check();
+        scope.addTask(new CancelIfAnyNode<>(predicate));
+        return this;
+    }
+
+    public AsyncStream<T> onComplete(Consumer<T[]> consumer) {
+        check();
+        scope.onComplete(consumer);
+        return this;
+    }
+
+    public AsyncStream<T> onComplete(Runnable runnable) {
+        check();
+        scope.onComplete(runnable);
+        return this;
+    }
 }
