@@ -5,10 +5,7 @@ import org.refined.taskNodes.*;
 import java.awt.*;
 import java.time.Duration;
 import java.util.Collection;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
+import java.util.function.*;
 
 @SuppressWarnings({"unused", "unchecked", "JavadocBlankLines"})
 public record AsyncStream<T>(StreamScope scope) {
@@ -37,11 +34,13 @@ public record AsyncStream<T>(StreamScope scope) {
      *
      * All values inside the AsyncStream<T> are considered Optional<T[]> inherently.
      *
+     *  Whenever using .fork() or sister methods, you *MUST return the same type
+     *  as was passed in. This is not enforced. You will see strange behavior
+     *  as a consequence of disobeying though, this is not fixable.
+     *
      * Upcoming features:
-     * - .fork()
+     * - .forkEach()
      * - .gather()
-     * - .collect()
-     * - .independentFork()
      * - A better return value from the .join() and similar methods, which will return a version
      *   of the Optional class, although a much more refined, better version of it, which will
      *   much more effectively work for the given task, to manage null, with ease, readably.
@@ -77,6 +76,10 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.addTask(new OfferNode<>((T[]) collection.toArray(Object[]::new)));
     }
 
+    public static AsyncStream<Void> empty() {
+        return new AsyncStream<>();
+    }
+
     public AsyncStream<T> start() {
         scope.start();
         return this;
@@ -105,7 +108,7 @@ public record AsyncStream<T>(StreamScope scope) {
     }
 
    public AsyncStream<T> catchError(Consumer<RuntimeException> exceptionConsumer) {
-       check();
+        check();
         scope.addTask(new CatchErrorNode<T>(exceptionConsumer));
         return this;
     }
@@ -184,8 +187,14 @@ public record AsyncStream<T>(StreamScope scope) {
 
     public AsyncStream<T> submit(Runnable runnable) {
         check();
-        scope.addTask(new SubmitNode<T>(runnable));
+        scope.addTask(new SubmitNode<>(runnable));
         return this;
+    }
+
+    public AsyncStream<Void> empty(Runnable runnable) {
+        check();
+        scope.addTask(new EmptyNode<>(runnable));
+        return new AsyncStream<>(scope);
     }
 
     public AsyncStream<T> cancelIfAll(Predicate<T> predicate) {
@@ -211,4 +220,32 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.onComplete(runnable);
         return this;
     }
+
+    public <R> AsyncStream<R> offer(R... items) {
+        check();
+        scope.addTask(new OfferNode<>(items));
+        return new AsyncStream<>(scope);
+    }
+
+    public <R> AsyncStream<R> offer(Collection<R> items) {
+        check();
+        scope.addTasks(new OfferNode<>(items));
+        return new AsyncStream<>(scope);
+    }
+
+    //
+
+    public <R> AsyncStream<Void> fork(String id, AsyncStream<R> stream) {
+        check();
+        scope.addTask(new ForkNode<R,T>(id, (Class<R>) Object.class, stream));
+        return new AsyncStream<>(scope);
+    }
+
+    public <R> AsyncStream<R> collect(String id,Class<R> clazz) {
+        check();
+        scope.addTask(new CollectNode<R>(id));
+        return new AsyncStream<>(scope);
+    }
+
+    //
 }

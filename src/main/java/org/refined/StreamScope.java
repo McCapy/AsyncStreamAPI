@@ -1,9 +1,6 @@
 package org.refined;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -196,12 +193,17 @@ public final class StreamScope {
         return onCancel;
     }
 
+    public Map<String,Map.Entry<AsyncStream<Object>,Class<Object>>> identityMap = new HashMap<>();
+    public Object[] collect(String id) { // What the fuck am I doing.
+        return identityMap.get(id).getKey().join();
+    }
+
     @Override
     public Object clone() {
         StreamScope scope = new StreamScope();
         scope.addTasks(this.getTasks());
         scope.named(this.getId());
-
+        scope.identityMap = identityMap;
         return scope;
     }
 }

@@ -3,7 +3,6 @@ package org.refined.taskNodes;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
-import java.util.Arrays;
 import java.util.function.Supplier;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
