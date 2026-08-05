@@ -21,12 +21,17 @@ public class FilterNode<T> implements TaskNode<T> {
 
     @Override
     public T[] execute(StreamScope scope) {
-        List<T> result = new ArrayList<>(scope.getItems().length);
-        for (T item : (T[]) scope.getItems()) {
-            if (predicate.test(item)) {
-                result.add(item);
+        try {
+            List<T> result = new ArrayList<>(scope.getItems().length);
+            for (T item : (T[]) scope.getItems()) {
+                if (predicate.test(item)) {
+                    result.add(item);
+                }
             }
+            return result.toArray((T[]) new Object[result.size()]);
+        } catch (RuntimeException e) {
+            scope.setError(e);
+            return null;
         }
-        return result.toArray((T[]) new Object[result.size()]);
     }
 }

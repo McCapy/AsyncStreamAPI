@@ -193,9 +193,9 @@ public final class StreamScope {
         return onCancel;
     }
 
-    public Map<String,Map.Entry<AsyncStream<Object>,Class<Object>>> identityMap = new HashMap<>();
-    public Object[] collect(String id) { // What the fuck am I doing.
-        return identityMap.get(id).getKey().join();
+    public Map<String,AsyncStream<Object>> forkMap = new HashMap<>();
+    public Object[] collect(String id) {
+        return forkMap.get(id).join();
     }
 
     @Override
@@ -203,7 +203,7 @@ public final class StreamScope {
         StreamScope scope = new StreamScope();
         scope.addTasks(this.getTasks());
         scope.named(this.getId());
-        scope.identityMap = identityMap;
+        scope.forkMap = forkMap;
         return scope;
     }
 }

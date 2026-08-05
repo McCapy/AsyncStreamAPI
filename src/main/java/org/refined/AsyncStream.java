@@ -197,12 +197,6 @@ public record AsyncStream<T>(StreamScope scope) {
         return new AsyncStream<>(scope);
     }
 
-    public AsyncStream<Void> empty(Consumer<T> consumer) {
-        check();
-        scope.addTask(new EmptyNode<>(consumer));
-        return new AsyncStream<>(scope);
-    }
-
     public AsyncStream<T> cancelIfAll(Predicate<T> predicate) {
         check();
         scope.addTask(new CancelIfAllNode<>(predicate));
@@ -239,17 +233,35 @@ public record AsyncStream<T>(StreamScope scope) {
         return new AsyncStream<>(scope);
     }
 
+    public AsyncStream<T> onStart(Runnable runnable) {
+        check();
+        scope.onStart(runnable);
+        return this;
+    }
+
+    public AsyncStream<T> onCancel(Runnable runnable) {
+        check();
+        scope.onCancel(runnable);
+        return this;
+    }
+
+    public AsyncStream<T> onCancel(Consumer<RuntimeException> consumer) {
+        check();
+        scope.onCancel(consumer);
+        return this;
+    }
+
     //
 
-    public <R> AsyncStream<Void> fork(String id, AsyncStream<R> stream) {
+    public <R> AsyncStream<Void> fork(String id, Function<T[],AsyncStream<?>> function) {
         check();
-        scope.addTask(new ForkNode<R,T>(id, (Class<R>) Object.class, stream));
+        scope.addTask(new ForkNode<R,T>(id, function));
         return new AsyncStream<>(scope);
     }
 
-    public <R> AsyncStream<Void> forkEach(AsyncStream<R> stream) {
+    public <R> AsyncStream<Void> forkEach(Function<T,AsyncStream<?>> function) {
         check();
-        scope.addTask(new ForkEachNode<>((Class<R>) Object.class,stream));
+        scope.addTask(new ForkEachNode<Void,T>(function));
         return new AsyncStream<>(scope);
     }
 

@@ -4,17 +4,15 @@ import org.refined.AsyncStream;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
-import java.util.Map;
+import java.util.function.Function;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
-public class ForkEachNode<T> implements TaskNode<T> {
+public class ForkEachNode<T,A> implements TaskNode<T> {
 
-    final Class<T> expectedClass;
-    final AsyncStream<T> stream;
+    final Function<A,AsyncStream<?>> function;
 
-    public ForkEachNode(Class<T> clazz,AsyncStream<T> stream) {
-        this.expectedClass = clazz;
-        this.stream = stream;
+    public ForkEachNode(Function<A,AsyncStream<?>> function) {
+        this.function = function;
     }
 
     @Override
@@ -24,11 +22,13 @@ public class ForkEachNode<T> implements TaskNode<T> {
 
     @Override
     public T[] execute(StreamScope scope) {
-        Object[] items = scope.getItems();
-        StreamScope holder = stream.scope();
-        for (int i = 0; i < items.length; i++) {
-            holder.setTask(0,new OfferNode<>(items[i]));
-            scope.identityMap.put(String.valueOf(i), (Map.Entry<AsyncStream<Object>, Class<Object>>) (Object) Map.entry(new AsyncStream<T>((StreamScope) holder.clone()).start(),expectedClass));
+        try {
+            Object[] items = scope.getItems();
+            for (int i = 0; i < items.length; i++) {
+                scope.forkMap.put(String.valueOf(i), (AsyncStream<Object>) (function.apply((A) items[i])).start());
+            }
+        } catch (RuntimeException e) {
+            scope.setError(e);
         }
         return null;
     }

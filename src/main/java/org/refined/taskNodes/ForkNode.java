@@ -4,19 +4,17 @@ import org.refined.AsyncStream;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
-import java.util.Map;
+import java.util.function.Function;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class ForkNode<T,A> implements TaskNode<T> {
 
     final String id;
-    final Class<T> expectedClass;
-    final AsyncStream<T> stream;
+    final Function<A[],AsyncStream<?>> function;
 
-    public ForkNode(String id, Class<T> expectedClass, AsyncStream<T> stream) {
+    public ForkNode(String id,Function<A[],AsyncStream<?>> function) {
         this.id = id;
-        this.expectedClass = expectedClass;
-        this.stream = stream;
+        this.function = function;
     }
 
     @Override
@@ -25,10 +23,14 @@ public class ForkNode<T,A> implements TaskNode<T> {
     }
 
     @Override
-    public T[] execute(StreamScope scope) { // im such a chud
-        stream.scope().setTask(0,new OfferNode<>((A[]) scope.getItems()));
-        scope.identityMap.put(id,(Map.Entry<AsyncStream<Object>, Class<Object>>) (Object) Map.entry(stream,expectedClass));
-        stream.start();
+    public T[] execute(StreamScope scope) {
+        try {
+            AsyncStream<?> stream = function.apply((A[]) scope.getItems());
+            scope.forkMap.put(id, (AsyncStream<Object>) stream);
+            stream.start();
+        } catch (RuntimeException e) {
+            scope.setError(e);
+        }
         return null;
     }
 }

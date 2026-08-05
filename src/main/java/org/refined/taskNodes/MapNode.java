@@ -50,9 +50,6 @@ public class MapNode<T,R> implements TaskNode<R> {
             scope.setError(new RuntimeException(e.getMessage()));
             return null;
         }
-        if (scope.getError() != null) {
-            return null;
-        }
         return results;
     }
 }

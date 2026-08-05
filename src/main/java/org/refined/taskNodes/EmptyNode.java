@@ -3,18 +3,13 @@ package org.refined.taskNodes;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
-import java.util.function.Consumer;
 
-@SuppressWarnings({"rawtypes", "unchecked"})
+@SuppressWarnings({"rawtypes"})
 public class EmptyNode<T> implements TaskNode<T> {
 
-    final Consumer<T> consumer;
+    final Runnable runnable;
     public EmptyNode(Runnable runnable) {
-        this.consumer = _ -> runnable.run();
-    }
-
-    public EmptyNode(Consumer<T> consumer) {
-        this.consumer = consumer;
+        this.runnable = runnable;
     }
 
     @Override
@@ -24,7 +19,7 @@ public class EmptyNode<T> implements TaskNode<T> {
 
     @Override
     public T[] execute(StreamScope scope) {
-        for (T item : (T[]) scope.getItems()) consumer.accept(item);
+        runnable.run();
         return null;
     }
 }

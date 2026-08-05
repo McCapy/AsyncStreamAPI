@@ -17,7 +17,12 @@ public class SubmitNode<T> implements TaskNode<T> {
 
     @Override
     public T[] execute(StreamScope scope) {
-        runnable.run();
-        return (T[]) scope.getItems();
+        try {
+            runnable.run();
+            return (T[]) scope.getItems();
+        } catch (RuntimeException e) {
+            scope.setError(e);
+            return null;
+        }
     }
 }

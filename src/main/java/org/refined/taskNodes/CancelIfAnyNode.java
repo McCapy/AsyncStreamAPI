@@ -20,13 +20,18 @@ public class CancelIfAnyNode<T> implements TaskNode<T> {
 
     @Override
     public T[] execute(StreamScope scope) {
-        T[] items = (T[]) scope.getItems();
-        for (T item : items) {
-            if (predicate.test(item))  {
-                scope.cancel();
-                return null;
+        try {
+            T[] items = (T[]) scope.getItems();
+            for (T item : items) {
+                if (predicate.test(item)) {
+                    scope.cancel();
+                    return null;
+                }
             }
+            return (T[]) scope.getItems();
+        } catch (RuntimeException e) {
+            scope.setError(e);
+            return null;
         }
-        return (T[]) scope.getItems();
     }
 }

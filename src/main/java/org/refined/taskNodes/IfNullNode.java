@@ -26,10 +26,15 @@ public class IfNullNode<T> implements TaskNode<T> {
 
     @Override
     public T[] execute(StreamScope scope) {
-        T[] items = (T[]) scope.getItems();
-        if (items == null || items instanceof Void[]) {
-            return supplier.get();
+        try {
+            T[] items = (T[]) scope.getItems();
+            if (items == null || items instanceof Void[]) {
+                return supplier.get();
+            }
+            return items;
+        } catch (RuntimeException e) {
+            scope.setError(e);
+            return null;
         }
-        return items;
     }
 }

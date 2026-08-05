@@ -24,22 +24,27 @@ public class DelayIfAnyNode<T> implements TaskNode<T> {
 
     @Override
     public T[] execute(StreamScope scope) {
-        T[] items = (T[]) scope.getItems();
-        boolean failed = true;
-        for (T item : items) {
-            if (predicate.test(item)) {
-                failed = false;
-                break;
+        try {
+            T[] items = (T[]) scope.getItems();
+            boolean failed = true;
+            for (T item : items) {
+                if (predicate.test(item)) {
+                    failed = false;
+                    break;
+                }
             }
-        }
-        if (!failed) {
-            try {
-                Thread.sleep(duration);
-            } catch (InterruptedException e) {
-                scope.setError(new RuntimeException(e.getMessage()));
-                return null;
+            if (!failed) {
+                try {
+                    Thread.sleep(duration);
+                } catch (InterruptedException e) {
+                    scope.setError(new RuntimeException(e.getMessage()));
+                    return null;
+                }
             }
+            return items;
+        } catch (RuntimeException e) {
+            scope.setError(e);
+            return null;
         }
-        return items;
     }
 }
