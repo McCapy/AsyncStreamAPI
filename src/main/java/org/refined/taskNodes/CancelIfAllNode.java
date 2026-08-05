@@ -5,7 +5,7 @@ import org.refined.TaskNode;
 
 import java.util.function.Predicate;
 
-@SuppressWarnings({"rawtypes", "unchecked"})
+@SuppressWarnings({"rawtypes",  "unchecked"})
 public class CancelIfAllNode<T> implements TaskNode<T> {
     final Predicate<T> predicate;
     public CancelIfAllNode(Predicate<T> predicate) {

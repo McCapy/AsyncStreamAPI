@@ -3,7 +3,7 @@ package org.refined.taskNodes;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
-@SuppressWarnings({"rawtypes", "unchecked"})
+@SuppressWarnings({"rawtypes",  "unchecked"})
 public class SubmitNode<T> implements TaskNode<T> {
     final Runnable runnable;
     public SubmitNode(Runnable runnable) {

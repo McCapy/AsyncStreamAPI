@@ -5,7 +5,7 @@ import org.refined.TaskNode;
 
 import java.util.function.Supplier;
 
-@SuppressWarnings({"rawtypes", "unchecked"})
+@SuppressWarnings({"rawtypes",  "unchecked"})
 public class IfNullNode<T> implements TaskNode<T> {
 
     final Supplier<T[]> supplier;

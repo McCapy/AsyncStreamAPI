@@ -5,7 +5,7 @@ import org.refined.TaskNode;
 
 import java.time.Duration;
 
-@SuppressWarnings({"rawtypes", "unchecked"})
+@SuppressWarnings({"rawtypes",  "unchecked"})
 public class DelayNode<T> implements TaskNode<T> {
     final Duration duration;
     public DelayNode(Duration duration) {

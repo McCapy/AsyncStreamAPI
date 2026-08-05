@@ -5,7 +5,7 @@ import org.refined.TaskNode;
 
 import java.util.function.Consumer;
 
-@SuppressWarnings({"unchecked", "rawtypes"})
+@SuppressWarnings({"unchecked",  "rawtypes"})
 public class PeekNode<T> implements TaskNode<T> {
 
     final Consumer<T> consumer;

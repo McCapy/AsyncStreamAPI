@@ -6,7 +6,7 @@ import org.refined.TaskNode;
 
 import java.util.function.Function;
 
-@SuppressWarnings({"rawtypes", "unchecked"})
+@SuppressWarnings({"rawtypes",  "unchecked"})
 public class ForkNode<T,A> implements TaskNode<T> {
 
     final String id;

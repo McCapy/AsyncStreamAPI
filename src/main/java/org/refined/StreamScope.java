@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
-@SuppressWarnings({"BooleanMethodIsAlwaysInverted", "unused", "ResultOfMethodCallIgnored", "rawtypes", "MethodDoesntCallSuperMethod", "unchecked"})
+@SuppressWarnings({"BooleanMethodIsAlwaysInverted", "unused",  "ResultOfMethodCallIgnored", "rawtypes", "MethodDoesntCallSuperMethod", "unchecked"})
 public final class StreamScope {
     private static final byte UNSTARTED = 2;
     private static final byte STARTED = 1;

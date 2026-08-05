@@ -6,7 +6,7 @@ import org.refined.TaskNode;
 import java.time.Duration;
 import java.util.function.Predicate;
 
-@SuppressWarnings({"rawtypes", "unchecked"})
+@SuppressWarnings({"rawtypes",  "unchecked"})
 public class DelayIfAllNode<T> implements TaskNode<T> {
 
     final Predicate<T> predicate;

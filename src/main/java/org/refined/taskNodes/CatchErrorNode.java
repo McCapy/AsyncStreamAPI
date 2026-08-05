@@ -5,7 +5,7 @@ import org.refined.TaskNode;
 
 import java.util.function.Consumer;
 
-@SuppressWarnings({"rawtypes", "unchecked"})
+@SuppressWarnings({"rawtypes",  "unchecked"})
 public class CatchErrorNode<T> implements TaskNode<T> {
 
     final Consumer<RuntimeException> exceptionConsumer;

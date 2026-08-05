@@ -7,7 +7,7 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.function.*;
 
-@SuppressWarnings({"unused", "unchecked", "JavadocBlankLines"})
+@SuppressWarnings({"unused",  "unchecked", "JavadocBlankLines"})
 public record AsyncStream<T>(StreamScope scope) {
 
     /** NOTES **
@@ -34,12 +34,7 @@ public record AsyncStream<T>(StreamScope scope) {
      *
      * All values inside the AsyncStream<T> are considered Optional<T[]> inherently.
      *
-     *  Whenever using .fork() or sister methods, you *MUST return the same type
-     *  as was passed in. This is not enforced. You will see strange behavior
-     *  as a consequence of disobeying though, this is not fixable.
-     *
      * Upcoming features:
-     * - .forkEach()
      * - .gather()
      * - A better return value from the .join() and similar methods, which will return a version
      *   of the Optional class, although a much more refined, better version of it, which will

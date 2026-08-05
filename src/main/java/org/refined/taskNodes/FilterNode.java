@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 
-@SuppressWarnings({"rawtypes", "unchecked"})
+@SuppressWarnings({"rawtypes",  "unchecked"})
 public class FilterNode<T> implements TaskNode<T> {
     final Predicate<T> predicate;
     public FilterNode(Predicate<T> predicate) {

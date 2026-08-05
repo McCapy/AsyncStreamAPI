@@ -4,7 +4,7 @@ import org.refined.StreamScope;
 import org.refined.TaskNode;
 
 
-@SuppressWarnings({"rawtypes"})
+@SuppressWarnings({"rawtypes" })
 public class EmptyNode<T> implements TaskNode<T> {
 
     final Runnable runnable;

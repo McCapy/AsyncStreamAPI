@@ -6,7 +6,7 @@ import org.refined.TaskNode;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Function;
 
-@SuppressWarnings({"rawtypes", "unchecked"})
+@SuppressWarnings({"rawtypes",  "unchecked"})
 public class MapNode<T,R> implements TaskNode<R> {
     private final Function<T,R> function;
 

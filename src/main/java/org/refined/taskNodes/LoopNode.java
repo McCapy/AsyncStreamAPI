@@ -4,7 +4,7 @@ import org.refined.AsyncStream;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
-@SuppressWarnings({"rawtypes", "unchecked"})
+@SuppressWarnings({"rawtypes",  "unchecked"})
 public class LoopNode<R,T> implements TaskNode<R> {
 
     final AsyncStream<R> stream;
