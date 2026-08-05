@@ -17,6 +17,8 @@ public class CollectNode<T> implements TaskNode<T> {
 
     @Override
     public T[] execute(StreamScope scope) {
-        return (T[]) scope.collect(id);
+        Object[] items = scope.collect(id);
+        scope.identityMap.remove(id);
+        return (T[]) items;
     }
 }

@@ -197,6 +197,12 @@ public record AsyncStream<T>(StreamScope scope) {
         return new AsyncStream<>(scope);
     }
 
+    public AsyncStream<Void> empty(Consumer<T> consumer) {
+        check();
+        scope.addTask(new EmptyNode<>(consumer));
+        return new AsyncStream<>(scope);
+    }
+
     public AsyncStream<T> cancelIfAll(Predicate<T> predicate) {
         check();
         scope.addTask(new CancelIfAllNode<>(predicate));
@@ -238,6 +244,12 @@ public record AsyncStream<T>(StreamScope scope) {
     public <R> AsyncStream<Void> fork(String id, AsyncStream<R> stream) {
         check();
         scope.addTask(new ForkNode<R,T>(id, (Class<R>) Object.class, stream));
+        return new AsyncStream<>(scope);
+    }
+
+    public <R> AsyncStream<Void> forkEach(AsyncStream<R> stream) {
+        check();
+        scope.addTask(new ForkEachNode<>((Class<R>) Object.class,stream));
         return new AsyncStream<>(scope);
     }
 
