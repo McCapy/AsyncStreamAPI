@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 @SuppressWarnings({"BooleanMethodIsAlwaysInverted", "unused",  "ResultOfMethodCallIgnored", "rawtypes", "MethodDoesntCallSuperMethod", "unchecked"})
-public final class StreamScope {
+public final class StreamScope implements Cloneable{
     private static final byte UNSTARTED = 2;
     private static final byte STARTED = 1;
     private static final byte COMPLETED = 0;
@@ -117,11 +117,8 @@ public final class StreamScope {
 
     }
 
-    public void addTask(TaskNode node) {
-        tasks.add(node);
-    }
 
-    public void addTasks(TaskNode... nodes) {
+    public void addTask(TaskNode... nodes) {
         tasks.addAll(List.of(nodes));
     }
 
@@ -193,9 +190,39 @@ public final class StreamScope {
         return onCancel;
     }
 
-    public Map<String,AsyncStream<Object>> forkMap = new HashMap<>();
-    public Object[] collect(String id) {
-        return forkMap.get(id).join();
+    public LinkedHashMap<String,AsyncStream<Object>> forkMap = new LinkedHashMap<>(4);
+    public Object[] collect(Collection<String> ids) {
+        String[] idArray = ids.toArray(String[]::new);
+        Object[] results = new Object[ids.size()];
+        for (int i = 0; i < ids.size(); i++) {
+            results[i] = forkMap.get(idArray[i]).join();
+        }
+        return results;
+    }
+    public Object[] collect(String... ids) {
+        Object[] results = new Object[ids.length];
+        for (int i = 0; i < ids.length; i++) {
+            results[i] = forkMap.get(ids[i]).join();
+        }
+        return results;
+    }
+
+    public Object[] gather() {
+        List<AsyncStream<Object>> streams = new ArrayList<>(forkMap.values());
+        int result = 0;
+        for (AsyncStream<Object> stream : streams) {
+            result += stream.join().length;
+        }
+        Object[] results = new Object[result];
+        int current = 0;
+        for (AsyncStream<Object> stream : streams) {
+            Object[] internalResult = stream.join();
+            for (Object object : internalResult) {
+                results[current] = object;
+                current++;
+            }
+        }
+        return results;
     }
 
     @Override

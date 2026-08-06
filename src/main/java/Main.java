@@ -1,17 +1,16 @@
 import org.refined.AsyncStream;
 
-void main() throws InterruptedException {
+void main() {
     AsyncStream<String> stream =
-        new AsyncStream<>(1, 2, 3, 4, 5)
-            .fork("test",items ->
-                new AsyncStream<>(items)
+        new AsyncStream<>(items)
+            .forkEach(holder ->
+                new AsyncStream<>(holder)
                     .map(String::valueOf)
             )
-            .submit(() -> System.out.println("Post fork tasks executing."))
-            .submit(() -> System.out.println("Collecting..."))
-            .collect("test",String.class)
-            .submit(( ) -> System.out.println("Collection completed."))
+            .gather(String.class)
+            .peek(System.out::println)
             .start();
-    Thread.sleep(4_000L);
     System.out.print("\nResult joined from child thread: " + Arrays.toString(stream.join()));
 }
+static final Integer[] items =
+        new Integer[]{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20};

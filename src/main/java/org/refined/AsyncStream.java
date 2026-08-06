@@ -7,9 +7,8 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.function.*;
 
-@SuppressWarnings({"unused",  "unchecked", "JavadocBlankLines"})
+@SuppressWarnings({"unused", "unchecked", "JavadocBlankLines", "MethodDoesntCallSuperMethod"})
 public record AsyncStream<T>(StreamScope scope) {
-
     /** NOTES **
      * This will just contain some useful info about the AsyncStream<T>
      *
@@ -26,16 +25,27 @@ public record AsyncStream<T>(StreamScope scope) {
      * have to check for both nulls & errors if an error is thrown
      * or likewise a safety check using .catchError() and .ifNull()
      *
-     * It should be known that when .fork(...) it will be treated as
+     * It should be known that when .fork(...) is executed it will be treated as
      * a foreign stream, that is until it has been joined, post join
      * will result in them effectively being fused together, although
-     * this fusing does come with some fine print. It is still
-     * very simple to use. **TO BE COMPLETED
+     * this fusing does come with some fine print. Although nothing major.
      *
      * All values inside the AsyncStream<T> are considered Optional<T[]> inherently.
+     * Meaning they *Can be null.
+     *
+     * It should be known that .gather(Class<T> clazz) gathers EVERY existing fork and casts
+     * to the supplied `clazz` value in the form of an array, the result of this is just
+     * an array containing every fork's resulting array, in the order each fork was added.
+     *
+     * Nextly, in regard to .collect() as well as .forkEach(), .forkEach() ID's each fork
+     * from 0-n where n is the length-1 of the result of the stream.
+     * As for .collect() it takes in an ID & a class type, the class type is the type which
+     * is passed onwards for usage’s sake.
+     *
+     * Another sidenote, any type of .fork() or variation of it, implicitly
+     * empties the value from the stream, regressing it into a AsyncStream<Void>
      *
      * Upcoming features:
-     * - .gather()
      * - A better return value from the .join() and similar methods, which will return a version
      *   of the Optional class, although a much more refined, better version of it, which will
      *   much more effectively work for the given task, to manage null, with ease, readably.
@@ -58,7 +68,7 @@ public record AsyncStream<T>(StreamScope scope) {
 
     public AsyncStream() {
         this(new StreamScope());
-        scope.addTask(new OfferNode<>(new Void[]{null}));
+        scope.addTask(new OfferNode<>((Void)null));
     }
 
     public AsyncStream(T... values) {
@@ -68,7 +78,7 @@ public record AsyncStream<T>(StreamScope scope) {
 
     public <X extends Collection<T>> AsyncStream(X collection) {
         this(new StreamScope());
-        scope.addTask(new OfferNode<>((T[]) collection.toArray(Object[]::new)));
+        scope.addTask(new OfferNode<>((T[])collection.toArray(Object[]::new)));
     }
 
     public static AsyncStream<Void> empty() {
@@ -224,7 +234,7 @@ public record AsyncStream<T>(StreamScope scope) {
 
     public <R> AsyncStream<R> offer(Collection<R> items) {
         check();
-        scope.addTasks(new OfferNode<>(items));
+        scope.addTask(new OfferNode<>(items));
         return new AsyncStream<>(scope);
     }
 
@@ -260,11 +270,31 @@ public record AsyncStream<T>(StreamScope scope) {
         return new AsyncStream<>(scope);
     }
 
-    public <R> AsyncStream<R> collect(String id,Class<R> clazz) {
-        check();
-        scope.addTask(new CollectNode<R>(id));
+    public <R> AsyncStream<R> collect(Class<R> clazz,String... ids) {
+        scope.addTask(new CollectNode<R>(ids));
+        return new AsyncStream<>(scope);
+    }
+
+    public <R> AsyncStream<R> collect(String[] ids,Class<R> clazz) {
+        scope.addTask(new CollectNode<R>(ids));
+        return new AsyncStream<>(scope);
+    }
+
+    public <R> AsyncStream<R> collect(Collection<String> ids,Class<R> clazz) {
+        scope.addTask(new CollectNode<R>(ids));
+        return new AsyncStream<>(scope);
+    }
+
+    public <R> AsyncStream<R> gather(Class<R> clazz) {
+        scope.addTask(new GatherNode<>());
         return new AsyncStream<>(scope);
     }
 
     //
+
+
+    @Override
+    protected Object clone() {
+        return new AsyncStream<T>((StreamScope) this.scope.clone());
+    }
 }
