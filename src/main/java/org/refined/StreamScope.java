@@ -2,6 +2,7 @@ package org.refined;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -87,14 +88,11 @@ public final class StreamScope implements Cloneable{
             latch.countDown();
         }
     }
-
+    private static final ThreadFactory FACTORY = Thread.ofVirtual().factory();
     public void run() {
         taskIndex = 0;
-        if (name != null) {
-            worker.setName(name);
-        }
         latch.countDown();
-        worker = Thread.ofVirtual().start(() -> {
+        worker = FACTORY.newThread(() -> {
             while (taskIndex < tasks.size()) {
                 if (isCancelled()) return;
                 try {
@@ -108,6 +106,10 @@ public final class StreamScope implements Cloneable{
             latch.countDown();
             if (onComplete != null) onComplete.accept(current);
         });
+        if (name != null) {
+            worker.setName(name);
+        }
+        worker.start();
 
     }
 
