@@ -13,6 +13,17 @@ void main() {
                 return item + 1; // so the results of this get disregarded.
             })
             .catchError(() -> new Integer[]{10,9,8,7,6}) // this just offers a value on error
+            .catchError((err) -> {
+                // do smth w/ error
+            })
+            .catchError() // cancels on error
+            .catchError(err -> {
+                // do smth w/ error
+                return new Integer[]{10,9,8,7,6};
+            }) // offers a value and does smth with the error
+            .catchError(() -> {
+                System.out.println("Smth");
+            })
             .start();
     System.out.println("Result joined from child thread: " + Arrays.toString(stream.join()));
 }

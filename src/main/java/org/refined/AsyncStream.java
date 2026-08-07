@@ -82,14 +82,14 @@ public record AsyncStream<T>(StreamScope scope) {
         return new AsyncStream<>(scope);
     }
     
-   public <R> AsyncStream<R> catchError(Consumer<RuntimeException> exceptionConsumer) {
+   public AsyncStream<T> catchError(Consumer<RuntimeException> exceptionConsumer) {
         scope.check();
         scope.addTask(new CatchErrorNode<>());
         scope.injectErrorHandling(err -> {
            exceptionConsumer.accept(err);
            return null;
        });
-       return new AsyncStream<>(scope);
+       return this;
     }
 
     public <R> AsyncStream<R> catchError(Supplier<R[]> supplier) {
@@ -99,14 +99,14 @@ public record AsyncStream<T>(StreamScope scope) {
         return new AsyncStream<>(scope);
     }
 
-    public <R> AsyncStream<R> catchError(Runnable runnable) {
+    public AsyncStream<T> catchError(Runnable runnable) {
         scope.check();
         scope.addTask(new CatchErrorNode<>());
         scope.injectErrorHandling(err -> {
             runnable.run();
             return null;
         });
-        return new AsyncStream<>(scope);
+        return this;
     }
 
     public AsyncStream<Void> catchError() {
