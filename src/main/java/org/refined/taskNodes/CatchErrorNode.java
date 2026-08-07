@@ -3,19 +3,10 @@ package org.refined.taskNodes;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
-import java.util.function.Consumer;
+import java.util.function.Function;
 
 @SuppressWarnings({"rawtypes",  "unchecked"})
 public class CatchErrorNode<T> implements TaskNode<T> {
-
-    final Consumer<RuntimeException> exceptionConsumer;
-
-    public CatchErrorNode(Consumer<RuntimeException> exceptionConsumer) {
-        this.exceptionConsumer = exceptionConsumer;
-    }
-    public CatchErrorNode(Runnable runnable) {
-        this.exceptionConsumer = _ -> runnable.run();
-    }
 
     @Override
     public Class<CatchErrorNode> getType() {
@@ -24,16 +15,17 @@ public class CatchErrorNode<T> implements TaskNode<T> {
 
     @Override
     public T[] execute(StreamScope scope) {
-        try {
-            if (scope.getError() != null) {
-                exceptionConsumer.accept(scope.getError());
-                scope.resetError();
-            }
-            return (T[]) scope.getItems();
-        }
-        catch (RuntimeException e) {
-            scope.setError(e);
-            return null;
-        }
+        return (T[]) scope.getItems();
+    }
+
+    Function<RuntimeException,T[]> handler;
+    @Override
+    public Function<RuntimeException, T[]> getHandler() {
+        return handler;
+    }
+
+    @Override
+    public void setHandler(Function<RuntimeException,T[]> function) {
+        this.handler = function;
     }
 }

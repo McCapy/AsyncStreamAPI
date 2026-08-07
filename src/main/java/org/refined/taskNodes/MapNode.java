@@ -3,7 +3,6 @@ package org.refined.taskNodes;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
-import java.util.concurrent.CountDownLatch;
 import java.util.function.Function;
 
 @SuppressWarnings({"rawtypes",  "unchecked"})
@@ -21,35 +20,29 @@ public class MapNode<T,R> implements TaskNode<R> {
 
     @Override
     public R[] execute(StreamScope scope) {
-        Object[] items = scope.getItems();
-        R[] results = (R[]) new Object[items.length];
-        CountDownLatch latch = new CountDownLatch(items.length);
-
-        for (int i = 0; i < items.length; i++) {
-            final int idx = i;
-            Thread.ofVirtual().start(() -> {
-                try {
-                    T input = (T) items[idx];
-                    results[idx] = function.apply(input);
-                }
-                catch (RuntimeException error) {
-                    scope.setError(error);
-                    for (long count = latch.getCount(); count > 0; count--) {
-                        latch.countDown();
-                    }
-                }
-                finally {
-                    latch.countDown();
-                }
-            });
-        }
-
         try {
-            latch.await();
-        } catch (InterruptedException e) {
-            scope.setError(new RuntimeException(e.getMessage()));
+            T[] items = (T[]) scope.getItems();
+            R[] results = (R[]) new Object[items.length];
+
+            for (int i = 0; i < items.length; i++) {
+                results[i] = function.apply(items[i]);
+            }
+
+            return results;
+        } catch (RuntimeException e) {
+            if (getHandler() != null) return handler.apply(e);
             return null;
         }
-        return results;
+    }
+
+    Function<RuntimeException,R[]> handler;
+    @Override
+    public Function<RuntimeException, R[]> getHandler() {
+        return handler;
+    }
+
+    @Override
+    public void setHandler(Function<RuntimeException,R[]> function) {
+        this.handler = function;
     }
 }

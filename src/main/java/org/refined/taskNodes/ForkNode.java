@@ -29,8 +29,18 @@ public class ForkNode<T,A> implements TaskNode<T> {
             scope.forkMap.put(id, (AsyncStream<Object>) stream);
             stream.start();
         } catch (RuntimeException e) {
-            scope.setError(e);
+            if (getHandler() != null) return handler.apply(e);
         }
         return null;
+    }
+    Function<RuntimeException,T[]> handler;
+    @Override
+    public Function<RuntimeException, T[]> getHandler() {
+        return handler;
+    }
+
+    @Override
+    public void setHandler(Function<RuntimeException,T[]> function) {
+        this.handler = function;
     }
 }

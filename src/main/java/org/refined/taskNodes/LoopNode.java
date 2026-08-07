@@ -4,6 +4,8 @@ import org.refined.AsyncStream;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
+import java.util.function.Function;
+
 @SuppressWarnings({"rawtypes",  "unchecked"})
 public class LoopNode<R,T> implements TaskNode<R> {
 
@@ -28,8 +30,18 @@ public class LoopNode<R,T> implements TaskNode<R> {
             }
             return (R[]) current;
         } catch (RuntimeException e) {
-            scope.setError(e);
+            if (getHandler() != null) return handler.apply(e);
             return null;
         }
+    }
+    Function<RuntimeException,R[]> handler;
+    @Override
+    public Function<RuntimeException, R[]> getHandler() {
+        return handler;
+    }
+
+    @Override
+    public void setHandler(Function<RuntimeException,R[]> function) {
+        this.handler = function;
     }
 }

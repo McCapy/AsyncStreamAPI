@@ -4,6 +4,7 @@ import org.refined.StreamScope;
 import org.refined.TaskNode;
 
 import java.util.Collection;
+import java.util.function.Function;
 
 @SuppressWarnings({"rawtypes",  "unchecked"})
 public class CollectNode<T> implements TaskNode<T> {
@@ -23,10 +24,26 @@ public class CollectNode<T> implements TaskNode<T> {
 
     @Override
     public T[] execute(StreamScope scope) {
-        Object[] items = scope.collect(id);
-        for (String string : id) {
-            scope.forkMap.remove(string);
+        try {
+            Object[] items = scope.collect(id);
+            for (String string : id) {
+                scope.forkMap.remove(string);
+            }
+            return (T[]) items;
+        } catch (RuntimeException e) {
+            if (getHandler() != null) return handler.apply(e);
+            return null;
         }
-        return (T[]) items;
+    }
+
+    Function<RuntimeException,T[]> handler;
+    @Override
+    public Function<RuntimeException, T[]> getHandler() {
+        return handler;
+    }
+
+    @Override
+    public void setHandler(Function<RuntimeException,T[]> function) {
+        this.handler = function;
     }
 }

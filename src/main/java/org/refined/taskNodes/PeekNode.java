@@ -4,6 +4,7 @@ import org.refined.StreamScope;
 import org.refined.TaskNode;
 
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 @SuppressWarnings({"unchecked",  "rawtypes"})
 public class PeekNode<T> implements TaskNode<T> {
@@ -28,8 +29,19 @@ public class PeekNode<T> implements TaskNode<T> {
             return items;
         }
         catch (RuntimeException e) {
-            scope.setError(e);
+            if (getHandler() != null) return handler.apply(e);
             return null;
         }
+    }
+
+    Function<RuntimeException,T[]> handler;
+    @Override
+    public Function<RuntimeException, T[]> getHandler() {
+        return handler;
+    }
+
+    @Override
+    public void setHandler(Function<RuntimeException,T[]> function) {
+        this.handler = function;
     }
 }

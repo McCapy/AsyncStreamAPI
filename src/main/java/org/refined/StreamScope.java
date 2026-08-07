@@ -5,8 +5,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
-@SuppressWarnings({"BooleanMethodIsAlwaysInverted", "unused",  "ResultOfMethodCallIgnored", "rawtypes", "MethodDoesntCallSuperMethod", "unchecked"})
+@SuppressWarnings({"BooleanMethodIsAlwaysInverted", "unused", "ResultOfMethodCallIgnored", "rawtypes", "MethodDoesntCallSuperMethod", "CallToPrintStackTrace", "unchecked"})
 public final class StreamScope implements Cloneable{
     private static final byte UNSTARTED = 2;
     private static final byte STARTED = 1;
@@ -18,44 +19,35 @@ public final class StreamScope implements Cloneable{
 
     private Thread worker;
     private Object[] current;
-    private int taskIndex = 0;
+    public int taskIndex = 0;
     private String name;
 
-    private Consumer<RuntimeException> onCancel;
+    public Runnable onCancel;
     void onCancel(Runnable runnable) {
-        onCancel = _ -> runnable.run();
-    }
-    void onCancel(Consumer<RuntimeException> consumer) {
-        onCancel = consumer;
-    }
-
-    private volatile RuntimeException error;
-
-    public RuntimeException getError() { return error; }
-
-    public void setError(RuntimeException exception) {
-        if (error == null) {
-            error = exception;
-        }
-    }
-    public void resetError() {
-        error = null;
+        onCancel = runnable;
     }
 
     public boolean isUnstarted() {
         return latch.getCount() == UNSTARTED;
     }
-
     public boolean isStarted() {
         return latch.getCount() <= STARTED;
     }
-
     public boolean isCompleted() {
         return latch.getCount() == COMPLETED;
     }
-
     public boolean isCancelled() {
         return cancelled.get();
+    }
+
+    private static final RuntimeException ERROR =
+            new RuntimeException("Operations cannot be added post-start, unless enacted by a TaskNode.");
+    public <T> void injectErrorHandling(Function<RuntimeException,T[]> function) {
+        ((TaskNode<T>) tasks.get(taskIndex - 2)).setHandler(function);
+    }
+
+    void check() throws RuntimeException {
+        if (!this.isUnstarted()) throw ERROR;
     }
 
     void start() {
@@ -79,7 +71,7 @@ public final class StreamScope implements Cloneable{
                 latch.await(ms, TimeUnit.MILLISECONDS);
             }
         } catch (InterruptedException e) {
-            setError(new RuntimeException(e.getMessage()));
+            e.printStackTrace();
             return null;
         }
         return current;
@@ -88,7 +80,7 @@ public final class StreamScope implements Cloneable{
     public void cancel() {
         if (isCompleted()) return;
         if (isCancelled()) return;
-        if (onCancel != null) onCancel.accept(error);
+        if (onCancel != null) onCancel.run();
         taskIndex = tasks.size();
         cancelled.set(true);
         for (long i = latch.getCount(); i > 0; i--) {
@@ -97,6 +89,7 @@ public final class StreamScope implements Cloneable{
     }
 
     public void run() {
+        taskIndex = 0;
         if (name != null) {
             worker.setName(name);
         }
@@ -107,7 +100,8 @@ public final class StreamScope implements Cloneable{
                 try {
                     current = tasks.get(taskIndex++).execute(this);
                 } catch (RuntimeException e) {
-                    this.setError(e);
+                    e.printStackTrace();
+                    this.cancel();
                 }
                 if (taskIndex == tasks.size()) break;
             }
@@ -119,14 +113,17 @@ public final class StreamScope implements Cloneable{
 
 
     public void addTask(TaskNode... nodes) {
+        taskIndex += nodes.length;
         tasks.addAll(List.of(nodes));
     }
 
     public void addTasks(Collection<TaskNode> nodes) {
+        taskIndex += nodes.size();
         tasks.addAll(nodes);
     }
 
     public void insertTask(TaskNode node, int index) {
+        taskIndex++;
         tasks.add(index, node);
     }
 
@@ -142,10 +139,6 @@ public final class StreamScope implements Cloneable{
         return worker;
     }
 
-    public int getTaskIndex() {
-        return taskIndex;
-    }
-
     public List<TaskNode> getTasks() {
         return Collections.unmodifiableList(tasks);
     }
@@ -154,40 +147,24 @@ public final class StreamScope implements Cloneable{
         return name;
     }
 
-    public void modifyIndex(int edit) {
-        taskIndex += edit;
-    }
-
     public StreamScope setTask(int index,TaskNode node) {
         tasks.set(index,node);
         return this;
     }
 
-    Consumer<Object[]> onComplete;
-    Runnable onStart;
+    public Consumer<Object[]> onComplete;
+    public Runnable onStart;
 
-    public Consumer<?> onComplete() {
-        return onComplete;
-    }
-
-    public <T> void onComplete(Consumer<T[]> onComplete) {
-        this.onComplete = (Consumer<Object[]>) ((Object) onComplete);
+    public void onComplete(Consumer<Object[]> onComplete) {
+        this.onComplete = onComplete;
     }
 
     public void onComplete(Runnable runnable) {
         this.onComplete = (items) -> runnable.run();
     }
 
-    public Runnable onStart() {
-        return onStart;
-    }
-
     public void onStart(Runnable onStart) {
         this.onStart = onStart;
-    }
-
-    public Consumer<RuntimeException> onCancel() {
-        return onCancel;
     }
 
     public LinkedHashMap<String,AsyncStream<Object>> forkMap = new LinkedHashMap<>(4);
@@ -210,8 +187,8 @@ public final class StreamScope implements Cloneable{
     public Object[] gather() {
         List<AsyncStream<Object>> streams = new ArrayList<>(forkMap.values());
         int result = 0;
-        for (AsyncStream<Object> stream : streams) {
-            result += stream.join().length;
+        for (AsyncStream<Object> objectAsyncStream : streams) {
+            result += objectAsyncStream.join().length;
         }
         Object[] results = new Object[result];
         int current = 0;

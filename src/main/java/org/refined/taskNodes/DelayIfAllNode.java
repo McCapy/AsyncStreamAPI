@@ -4,6 +4,7 @@ import org.refined.StreamScope;
 import org.refined.TaskNode;
 
 import java.time.Duration;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 @SuppressWarnings({"rawtypes",  "unchecked"})
@@ -37,13 +38,24 @@ public class DelayIfAllNode<T> implements TaskNode<T> {
             try {
                 Thread.sleep(duration);
             } catch (InterruptedException e) {
-                scope.setError(new RuntimeException(e.getMessage()));
+                if (getHandler() != null) return handler.apply(new RuntimeException(e.getMessage()));
                 return null;
             }
             return items;
         } catch (RuntimeException e) {
-            scope.setError(e);
+            if (getHandler() != null) return handler.apply(e);
             return null;
         }
+    }
+
+    Function<RuntimeException,T[]> handler;
+    @Override
+    public Function<RuntimeException, T[]> getHandler() {
+        return handler;
+    }
+
+    @Override
+    public void setHandler(Function<RuntimeException,T[]> function) {
+        this.handler = function;
     }
 }

@@ -1,6 +1,24 @@
 import org.refined.AsyncStream;
 
 void main() {
+    // new error handling (allows for defaults, lowering the need for ifNull catches)
+    // error catching is **NO LONGER REQUIRED** originally it would ruin your code,
+    // forcing you to both catch implicitly, but also do an ifNull check.
+    AsyncStream<Integer> stream =
+        new AsyncStream<>(1,2,3,4,5)
+            .map((item) -> {
+                if (item == 3) {
+                    throw new RuntimeException("Item cannot be three."); // throws return with null
+                }
+                return item + 1; // so the results of this get disregarded.
+            })
+            .catchError(() -> new Integer[]{10,9,8,7,6}) // this just offers a value on error
+            .start();
+    System.out.println("Result joined from child thread: " + Arrays.toString(stream.join()));
+}
+
+void main2() {
+    // new fork handling
     AsyncStream<String> stream =
         new AsyncStream<>(items)
             .forkEach(holder ->
