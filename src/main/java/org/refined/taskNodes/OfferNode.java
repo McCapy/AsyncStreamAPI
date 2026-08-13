@@ -3,14 +3,15 @@ package org.refined.taskNodes;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
+import java.util.Collection;
 import java.util.function.Function;
 
 @SuppressWarnings({"rawtypes",  "unchecked"})
 public class OfferNode<T> implements TaskNode<T> {
-    final T[] objects;
+    final Function<T[],T[]> function;
 
-    public OfferNode(T... values) {
-        this.objects = values;
+    public OfferNode(Function<T[],T[]> function) {
+        this.function = function;
     }
 
     @Override
@@ -21,7 +22,7 @@ public class OfferNode<T> implements TaskNode<T> {
     @Override
     public T[] execute(StreamScope scope) {
         try {
-            return objects;
+            return function.apply((T[]) scope.getItems());
         } catch (RuntimeException e) {
             if (getHandler() != null) return handler.apply(e);
             return null;

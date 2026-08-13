@@ -1,9 +1,8 @@
 package org.refined;
 
-import java.io.Serializable;
 import java.util.function.Function;
 
-public interface TaskNode<T> extends  Serializable {
+public interface TaskNode<T>  {
     Class<?> getType();
     T[] execute(StreamScope scope);
     Function<RuntimeException,T[]> getHandler();

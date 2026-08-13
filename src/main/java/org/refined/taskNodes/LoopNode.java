@@ -9,10 +9,10 @@ import java.util.function.Function;
 @SuppressWarnings({"rawtypes",  "unchecked"})
 public class LoopNode<R,T> implements TaskNode<R> {
 
-    final AsyncStream<R> stream;
+    final Function<T[],AsyncStream<R>> streamFunction;
     final int repetitions;
-    public LoopNode(int repetitions, AsyncStream<R> stream) {
-        this.stream = stream;
+    public LoopNode(int repetitions, Function<T[],AsyncStream<R>> stream) {
+        this.streamFunction = stream;
         this.repetitions = repetitions;
     }
 
@@ -24,9 +24,11 @@ public class LoopNode<R,T> implements TaskNode<R> {
     @Override
     public R[] execute(StreamScope scope) {
         try {
+            AsyncStream<R> stream = streamFunction.apply(((T[]) scope.getItems()));
             Object[] current = scope.getItems();
             for (int i = 0; i < repetitions; i++) {
-                current = new AsyncStream<T>(((StreamScope) stream.scope().clone()).setTask(0, new OfferNode<>(current))).join();
+                final Object[] finalObj = current;
+                current = stream.reset().scope().setTask(0,new OfferNode<>(_ -> finalObj)).join();
             }
             return (R[]) current;
         } catch (RuntimeException e) {

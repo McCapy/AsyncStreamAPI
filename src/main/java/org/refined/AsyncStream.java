@@ -2,9 +2,10 @@ package org.refined;
 
 import org.refined.taskNodes.*;
 
-import java.awt.*;
 import java.time.Duration;
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.*;
 
 /**
@@ -24,65 +25,71 @@ import java.util.function.*;
  * @param <T> This is the array-cleaned type of the AsyncStream, T is internally treated as Object[] which is cast
  *           to/from T/T[]
  */
-@SuppressWarnings({"unused", "unchecked", "JavadocBlankLines", "MethodDoesntCallSuperMethod", "CallToPrintStackTrace"})
+@SuppressWarnings({"unused", "unchecked", "JavadocBlankLines", "CallToPrintStackTrace"})
 public record AsyncStream<T>(StreamScope scope) {
 
-    public AsyncStream<T> named(String id) {
-        scope.check();
-        scope.named(id);
-        return this;
-    }
-
+    // Constructors and Factory-Constructors
     public AsyncStream() {
         this(new StreamScope());
-        scope.addTask(new OfferNode<>((Void)null));
+        scope.addTask(new OfferNode<>(items -> null));
     }
-
     public AsyncStream(T... values) {
         this(new StreamScope());
-        scope.addTask(new OfferNode<>(values));
+        scope.addTask(new OfferNode<>(items -> values));
     }
-
     public <X extends Collection<T>> AsyncStream(X collection) {
         this(new StreamScope());
-        scope.addTask(new OfferNode<>((T[])collection.toArray(Object[]::new)));
+        scope.addTask(new OfferNode<>(item -> collection.toArray(Object[]::new)));
     }
-
     public static AsyncStream<Void> empty() {
         return new AsyncStream<>();
     }
+    // Constructors and Factory-Constructors
 
+    // Status Operations
     public AsyncStream<T> start() {
         scope.start();
         return this;
     }
-
-    public T[] join() {
-        return (T[]) scope.join();
-    }
-
-    public T[] join(long ms) {
-        return (T[]) scope.join(ms);
-    }
-
     public void cancel() {
         scope.cancel();
     }
-    
-    public <R> AsyncStream<R> map(Function<T,R> function) {
-        scope.check();
-        scope.addTask(new MapNode<>(function));
-        return new AsyncStream<>(scope);
+    public AsyncStream<T> reset() {
+        return new AsyncStream<>(this.scope.reset());
     }
-    
+    public AsyncStream<T> named(String id) {
+        scope.check();
+        scope.setName(id);
+        return this;
+    }
+    public T[] toArray(IntFunction<T[]> function) {
+        scope.join();
+        Object[] items = scope.getItems();
+        T[] result = function.apply(items.length);
+        for (int i = 0; i < items.length; i++) {
+            result[i] = (T) items[i];
+        }
+        return result;
+    }
+    public T[] toArray(IntFunction<T[]> function,long ms) {
+        scope.join(ms);
+        Object[] items = scope.getItems();
+        T[] result = function.apply(items.length);
+        for (int i = 0; i < items.length; i++) {
+            result[i] = (T) items[i];
+        }
+        return result;
+    }
+    // Status Operations
+
+    // Error Handling
     public <R> AsyncStream<R> catchError(Function<RuntimeException,R[]> function) {
         scope.check();
         scope.addTask(new CatchErrorNode<R>());
         scope.injectErrorHandling(function);
         return new AsyncStream<>(scope);
     }
-    
-   public AsyncStream<T> catchError(Consumer<RuntimeException> exceptionConsumer) {
+    public AsyncStream<T> catchError(Consumer<RuntimeException> exceptionConsumer) {
         scope.check();
         scope.addTask(new CatchErrorNode<>());
         scope.injectErrorHandling(err -> {
@@ -91,14 +98,12 @@ public record AsyncStream<T>(StreamScope scope) {
        });
        return this;
     }
-
     public <R> AsyncStream<R> catchError(Supplier<R[]> supplier) {
         scope.check();
         scope.addTask(new CatchErrorNode<>());
         scope.injectErrorHandling(err -> supplier.get());
         return new AsyncStream<>(scope);
     }
-
     public AsyncStream<T> catchError(Runnable runnable) {
         scope.check();
         scope.addTask(new CatchErrorNode<>());
@@ -108,8 +113,7 @@ public record AsyncStream<T>(StreamScope scope) {
         });
         return this;
     }
-
-    public AsyncStream<Void> catchError() {
+    public AsyncStream<T> catchError() {
         scope.check();
         scope.addTask(new CatchErrorNode<>());
         scope.injectErrorHandling(err -> {
@@ -119,165 +123,187 @@ public record AsyncStream<T>(StreamScope scope) {
         });
         return new AsyncStream<>(scope);
     }
+    // Error Handling
 
+    // Transformative Operations
     public AsyncStream<T> filter(Predicate<T> predicate) {
         scope.check();
         scope.addTask(new FilterNode<>(predicate));
         return this;
     }
-
-    public AsyncStream<T> delayIfAll(Predicate<T> predicate, Duration duration) {
+    public <R> AsyncStream<R> map(Function<T,R> function) {
         scope.check();
-        scope.addTask(new DelayIfAllNode<>(predicate,duration));
-        return this;
-    }
-
-    public AsyncStream<T> delayIfAny(Predicate<T> predicate, Duration duration) {
-        scope.check();
-        scope.addTask(new DelayIfAnyNode<>(predicate,duration));
-        return this;
-    }
-
-    public AsyncStream<Void> forEach(Consumer<T> consumer) {
-        scope.check();
-        scope.addTask(new ForEachNode<>(consumer));
+        scope.addTask(new MapNode<>(function));
         return new AsyncStream<>(scope);
     }
-
-    public AsyncStream<T> peek(Consumer<T> consumer) {
+    public <R> AsyncStream<R> offer(R... items) {
         scope.check();
-        scope.addTask(new PeekNode<>(consumer));
+        scope.addTask(new OfferNode<>((set) -> items));
+        return new AsyncStream<>(scope);
+    }
+    public <R> AsyncStream<R> offer(Collection<R> items) {
+        scope.check();
+        scope.addTask(new OfferNode<>((set) -> items.toArray()));
+        return new AsyncStream<>(scope);
+    }
+    public AsyncStream<T> offer(Function<T[],T[]> function) {
+        scope.check();
+        scope.addTask(new OfferNode<>(function));
         return this;
     }
-
-    public <R> AsyncStream<R> ifNull(Supplier<R[]> supplier) {
-        scope.check();
-        scope.addTask(new IfNullNode<>(supplier));
-        return new AsyncStream<>(scope);
-    }
-
-    public <R> AsyncStream<R> ifNull(R... items) {
-        scope.check();
-        scope.addTask(new IfNullNode<>(items));
-        return new AsyncStream<>(scope);
-    }
-
-    public <X extends Collection<R>,R> AsyncStream<R> ifNull(X item) {
-        scope.check();
-        scope.addTask(new IfNullNode<>((R[]) item.toArray()));
-        return new AsyncStream<>(scope);
-    }
-
-    public AsyncStream<T> delay(Duration duration) {
-        scope.check();
-        scope.addTask(new DelayNode<>(duration));
-        return this;
-    }
-
-    public <R> AsyncStream<R> loop(int repetitions,AsyncStream<R> stream) {
-        scope.check();
-        scope.addTask(new LoopNode<R,T>(repetitions,stream));
-        return new AsyncStream<>(scope);
-    }
-
-    public AsyncStream<T> submit(Runnable runnable) {
-        scope.check();
-        scope.addTask(new SubmitNode<>(runnable));
-        return this;
-    }
-
     public AsyncStream<Void> empty(Runnable runnable) {
         scope.check();
         scope.addTask(new EmptyNode<>(runnable));
         return new AsyncStream<>(scope);
     }
+    public <R> AsyncStream<R> flatMap(Function<T, R[]> function) {
+        scope.check();
+        scope.addTask(new FlatMapNode<>(function));
+        return new AsyncStream<>(scope);
+    }
+    public AsyncStream<T> parallelSort(Comparator<T> comparator) {
+        scope.check();
+        scope.addTask(new SortNode<>(comparator,true));
+        return this;
+    }
+    public AsyncStream<T> sort(Comparator<T> comparator) {
+        scope.check();
+        scope.addTask(new SortNode<>(comparator,false));
+        return this;
+    }
+    public <R> AsyncStream<R> parallel(IntFunction<R[]> func,ForkJoinPool pool,Function<T,R> mapper) {
+        scope.check();
+        scope.addTask(new ParallelNode<>(func,pool,mapper));
+        return new AsyncStream<>(scope);
+    }
+    // Transformative Operations
 
+    // Iteration and Loops
+    public AsyncStream<Void> forEach(Consumer<T> consumer) {
+        scope.check();
+        scope.addTask(new ForEachNode<>(consumer));
+        return new AsyncStream<>(scope);
+    }
+    public AsyncStream<T> peek(Consumer<T> consumer) {
+        scope.check();
+        scope.addTask(new PeekNode<>(consumer));
+        return this;
+    }
+    public <R> AsyncStream<R> loop(int repetitions,Function<T[],AsyncStream<R>> stream) {
+        scope.check();
+        scope.addTask(new LoopNode<>(repetitions, stream));
+        return new AsyncStream<>(scope);
+    }
+    // Iteration and Loops
+
+    // Delay and Delay Conditionals
+    public AsyncStream<T> delayIfAll(Predicate<T> predicate, Duration duration) {
+        scope.check();
+        scope.addTask(new DelayIfAllNode<>(predicate,duration));
+        return this;
+    }
+    public AsyncStream<T> delayIfAny(Predicate<T> predicate, Duration duration) {
+        scope.check();
+        scope.addTask(new DelayIfAnyNode<>(predicate,duration));
+        return this;
+    }
+    public AsyncStream<T> delay(Duration duration) {
+        scope.check();
+        scope.addTask(new DelayNode<>(duration));
+        return this;
+    }
+    // Delay and Delay Conditionals
+
+    // Miscellaneous
+    public AsyncStream<T> submit(Runnable runnable) {
+        scope.check();
+        scope.addTask(new SubmitNode<>(runnable));
+        return this;
+    }
+    public <R> AsyncStream<R> addTask(TaskNode<R> taskNode) {
+        scope.check();
+        scope.addTask(taskNode);
+        return new AsyncStream<>(scope);
+    }
+    // Miscellaneous
+
+    // Conditionals
+    public <R> AsyncStream<R> ifNull(Supplier<R[]> supplier) {
+        scope.check();
+        scope.addTask(new IfNullNode<>(supplier));
+        return new AsyncStream<>(scope);
+    }
+    public <R> AsyncStream<R> ifNull(R... items) {
+        scope.check();
+        scope.addTask(new IfNullNode<>(items));
+        return new AsyncStream<>(scope);
+    }
+    public <X extends Collection<R>,R> AsyncStream<R> ifNull(X item) {
+        scope.check();
+        scope.addTask(new IfNullNode<>((R[]) item.toArray()));
+        return new AsyncStream<>(scope);
+    }
     public AsyncStream<T> cancelIfAll(Predicate<T> predicate) {
         scope.check();
         scope.addTask(new CancelIfAllNode<>(predicate));
         return this;
     }
-
     public AsyncStream<T> cancelIfAny(Predicate<T> predicate) {
         scope.check();
         scope.addTask(new CancelIfAnyNode<>(predicate));
         return this;
     }
+    // Conditionals
 
+    // Event Operations
     public AsyncStream<T> onComplete(Consumer<T[]> consumer) {
         scope.check();
         scope.onComplete((Consumer<Object[]>) (Object) consumer);
         return this;
     }
-
-    public AsyncStream<T> onComplete(Runnable runnable) {
-        scope.check();
-        scope.onComplete(runnable);
-        return this;
-    }
-
-    public <R> AsyncStream<R> offer(R... items) {
-        scope.check();
-        scope.addTask(new OfferNode<>(items));
-        return new AsyncStream<>(scope);
-    }
-
-    public <R> AsyncStream<R> offer(Collection<R> items) {
-        scope.check();
-        scope.addTask(new OfferNode<>(items));
-        return new AsyncStream<>(scope);
-    }
-
     public AsyncStream<T> onStart(Runnable runnable) {
         scope.check();
         scope.onStart(runnable);
         return this;
     }
-
     public AsyncStream<T> onCancel(Runnable runnable) {
         scope.check();
         scope.onCancel(runnable);
         return this;
     }
+    public AsyncStream<T> onComplete(Runnable runnable) {
+        scope.check();
+        scope.onComplete(runnable);
+        return this;
+    }
+    // Event Operations
 
-    //
-
+    // Fork operations
     public <R> AsyncStream<Void> fork(String id, Function<T[],AsyncStream<?>> function) {
         scope.check();
         scope.addTask(new ForkNode<R,T>(id, function));
         return new AsyncStream<>(scope);
     }
-
     public <R> AsyncStream<Void> forkEach(Function<T,AsyncStream<?>> function) {
         scope.check();
         scope.addTask(new ForkEachNode<Void,T>(function));
         return new AsyncStream<>(scope);
     }
-
     public <R> AsyncStream<R> collect(Class<R> clazz,String... ids) {
         scope.addTask(new CollectNode<R>(ids));
         return new AsyncStream<>(scope);
     }
-
     public <R> AsyncStream<R> collect(String[] ids,Class<R> clazz) {
         scope.addTask(new CollectNode<R>(ids));
         return new AsyncStream<>(scope);
     }
-
     public <R> AsyncStream<R> collect(Collection<String> ids,Class<R> clazz) {
         scope.addTask(new CollectNode<R>(ids));
         return new AsyncStream<>(scope);
     }
-
     public <R> AsyncStream<R> gather(Class<R> clazz) {
         scope.addTask(new GatherNode<>());
         return new AsyncStream<>(scope);
     }
-
-    //
-
-    @Override
-    protected Object clone() {
-        return new AsyncStream<T>((StreamScope) this.scope.clone());
-    }
+    // Fork Operations
 }
