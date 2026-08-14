@@ -1,5 +1,5 @@
 package org.refined.taskNodes;
-
+ // unstable (.collect() isn't functional for some reason)
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 

@@ -31,17 +31,23 @@ public record AsyncStream<T>(StreamScope scope) {
     // Constructors and Factory-Constructors
     public AsyncStream() {
         this(new StreamScope());
-        scope.addTask(new OfferNode<>(items -> null));
+        scope.addTask(new OfferNode<Void>(items -> new Void[]{null}));
     }
     public AsyncStream(T... values) {
         this(new StreamScope());
-        scope.addTask(new OfferNode<>(items -> values));
+        scope.addTask(new OfferNode<T>(items -> values));
     }
-    public <X extends Collection<T>> AsyncStream(X collection) {
+    public AsyncStream(Collection<T> collection) {
         this(new StreamScope());
-        scope.addTask(new OfferNode<>(item -> collection.toArray(Object[]::new)));
+        scope.addTask(new OfferNode<T>(item -> (T[]) collection.toArray(Object[]::new)));
     }
-    public static AsyncStream<Void> empty() {
+    public static <R> AsyncStream<R> of(R... values) {
+        return new AsyncStream<>(values);
+    }
+    public static <R> AsyncStream<R> of(Collection<R> values) {
+        return new AsyncStream<>(values);
+    }
+    public static AsyncStream<Void> ofEmpty() {
         return new AsyncStream<>();
     }
     // Constructors and Factory-Constructors
