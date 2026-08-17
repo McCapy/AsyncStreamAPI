@@ -5,9 +5,13 @@ void main() { // test case
         new AsyncStream<>(1,2,3,4,5)
             .forkEach(item ->
                 new AsyncStream<>(item)
-                    .map(other -> other * 5)
+                    .map(other -> {
+                        int i = other * 5;
+                        System.out.println(i);
+                        return i;
+                    })
             )
-            .collect(Integer.class,"2")
+            .collect(Integer[]::new,List.of("0","1","2","3","4"))
             .toArray(Integer[]::new);
     System.out.println(Arrays.toString(result));
 }

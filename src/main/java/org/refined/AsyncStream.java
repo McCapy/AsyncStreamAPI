@@ -5,6 +5,7 @@ import org.refined.taskNodes.*;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.*;
 
@@ -70,21 +71,11 @@ public record AsyncStream<T>(StreamScope scope) {
     }
     public T[] toArray(IntFunction<T[]> function) {
         scope.join();
-        Object[] items = scope.getItems();
-        T[] result = function.apply(items.length);
-        for (int i = 0; i < items.length; i++) {
-            result[i] = (T) items[i];
-        }
-        return result;
+        return (T[]) scope.getItems();
     }
     public T[] toArray(IntFunction<T[]> function,long ms) {
         scope.join(ms);
-        Object[] items = scope.getItems();
-        T[] result = function.apply(items.length);
-        for (int i = 0; i < items.length; i++) {
-            result[i] = (T) items[i];
-        }
-        return result;
+        return (T[]) scope.getItems();
     }
     // Status Operations
 
@@ -295,20 +286,16 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.addTask(new ForkEachNode<Void,T>(function));
         return new AsyncStream<>(scope);
     }
-    public <R> AsyncStream<R> collect(Class<R> clazz,String... ids) {
+    public <R> AsyncStream<R> collect(IntFunction<R[]> type,String... ids) {
         scope.addTask(new CollectNode<R>(ids));
         return new AsyncStream<>(scope);
     }
-    public <R> AsyncStream<R> collect(String[] ids,Class<R> clazz) {
+    public <R> AsyncStream<R> collect(IntFunction<R[]> type,Collection<String> ids) {
         scope.addTask(new CollectNode<R>(ids));
         return new AsyncStream<>(scope);
     }
-    public <R> AsyncStream<R> collect(Collection<String> ids,Class<R> clazz) {
-        scope.addTask(new CollectNode<R>(ids));
-        return new AsyncStream<>(scope);
-    }
-    public <R> AsyncStream<R> gather(Class<R> clazz) {
-        scope.addTask(new GatherNode<>());
+    public <R> AsyncStream<R> gather(IntFunction<R[]> type) {
+        scope.addTask(new GatherNode<>(type));
         return new AsyncStream<>(scope);
     }
     // Fork Operations

@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.IntFunction;
 
 @SuppressWarnings({"BooleanMethodIsAlwaysInverted", "unused", "ResultOfMethodCallIgnored", "rawtypes", "CallToPrintStackTrace", "unchecked"})
 public final class StreamScope {
@@ -92,6 +93,7 @@ public final class StreamScope {
         }
     }
     public Object[] collect(Collection<String> ids) {
+        List<AsyncStream<Object>> streams = new ArrayList<>(forkMap.values());
         String[] idArray = ids.toArray(String[]::new);
         Object[] results = new Object[ids.size()];
         for (int i = 0; i < ids.size(); i++) {
@@ -100,23 +102,32 @@ public final class StreamScope {
         return results;
     }
     public Object[] collect(String... ids) {
-        Object[] results = new Object[ids.length];
-        for (int i = 0; i < ids.length; i++) {
-            results[i] = forkMap.get(ids[i]).toArray(Object[]::new);
+        List<AsyncStream<Object>> streams = new ArrayList<>(forkMap.values());
+        int len = 0;
+        for (AsyncStream<Object> stream : streams) {
+            len += stream.toArray(Object[]::new).length;
         }
-        return results;
+        Object[] result = new Object[len];
+        int currentPlace = 0;
+        for (String id : ids) {
+            for (Object o : forkMap.get(id).toArray(Object[]::new)) {
+                result[currentPlace] = o;
+                currentPlace++;
+            }
+        }
+        return result;
     }
-    public Object[] gather() {
+    public <T> T[] gather(IntFunction<T[]> accumulator) {
         List<AsyncStream<Object>> streams = new ArrayList<>(forkMap.values());
         int result = 0;
         for (AsyncStream<Object> objectAsyncStream : streams) {
             result += objectAsyncStream.toArray(Object[]::new).length;
         }
-        Object[] results = new Object[result];
+        T[] results = accumulator.apply(result);
         int current = 0;
         for (AsyncStream<Object> stream : streams) {
             Object[] internalResult = stream.toArray(Object[]::new);
-            for (Object object : internalResult) {
+            for (T object : (T[]) internalResult) {
                 results[current] = object;
                 current++;
             }
