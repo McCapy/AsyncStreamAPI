@@ -7,7 +7,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.IntFunction;
 
 @SuppressWarnings({"BooleanMethodIsAlwaysInverted", "unused", "ResultOfMethodCallIgnored", "rawtypes", "CallToPrintStackTrace", "unchecked"})
 public final class StreamScope {
@@ -21,7 +20,7 @@ public final class StreamScope {
     public final LinkedHashMap<String,AsyncStream<Object>> forkMap = new LinkedHashMap<>(4);
 
     private Thread worker;
-    private Object[] current;
+    private static final ThreadLocal<Object[]> threadLocal = new ThreadLocal<>();
     public int taskIndex = 0;
     private String name = "<none>";
 
@@ -44,7 +43,7 @@ public final class StreamScope {
     }
 
     public Object[] getItems() {
-        return current;
+        return threadLocal.get();
     }
     public Thread getWorker() {
         return worker;
@@ -80,7 +79,7 @@ public final class StreamScope {
             return null;
         }
         joinForks();
-        return current;
+        return threadLocal.get();
     }
     public void cancel() {
         if (isCompleted()) return;
@@ -92,47 +91,19 @@ public final class StreamScope {
             latch.countDown();
         }
     }
-    public Object[] collect(Collection<String> ids) {
-        List<AsyncStream<Object>> streams = new ArrayList<>(forkMap.values());
-        String[] idArray = ids.toArray(String[]::new);
-        Object[] results = new Object[ids.size()];
-        for (int i = 0; i < ids.size(); i++) {
-            results[i] = forkMap.get(idArray[i]).toArray(Object[]::new);
-        }
-        return results;
-    }
     public Object[] collect(String... ids) {
-        List<AsyncStream<Object>> streams = new ArrayList<>(forkMap.values());
-        int len = 0;
-        for (AsyncStream<Object> stream : streams) {
-            len += stream.toArray(Object[]::new).length;
-        }
-        Object[] result = new Object[len];
-        int currentPlace = 0;
+        List<Object> result = new ArrayList<>(16);
         for (String id : ids) {
-            for (Object o : forkMap.get(id).toArray(Object[]::new)) {
-                result[currentPlace] = o;
-                currentPlace++;
-            }
+            Collections.addAll(result, forkMap.get(id).toArray());
         }
-        return result;
+        return result.toArray();
     }
-    public <T> T[] gather(IntFunction<T[]> accumulator) {
-        List<AsyncStream<Object>> streams = new ArrayList<>(forkMap.values());
-        int result = 0;
-        for (AsyncStream<Object> objectAsyncStream : streams) {
-            result += objectAsyncStream.toArray(Object[]::new).length;
+    public Object[] gather() {
+        List<Object> result = new ArrayList<>(16);
+        for (AsyncStream<Object> value : forkMap.values()) {
+            Collections.addAll(result, value.toArray());
         }
-        T[] results = accumulator.apply(result);
-        int current = 0;
-        for (AsyncStream<Object> stream : streams) {
-            Object[] internalResult = stream.toArray(Object[]::new);
-            for (T object : (T[]) internalResult) {
-                results[current] = object;
-                current++;
-            }
-        }
-        return results;
+        return result.toArray();
     }
     // Operations
 
@@ -142,7 +113,7 @@ public final class StreamScope {
     private void joinForks(StreamScope scope) {
         for (AsyncStream<Object> stream : scope.forkMap.values()) {
             try {
-                Object[] result = stream.toArray(Object[]::new);
+                Object[] result = stream.toArray();
                 stream.scope().joinForks(stream.scope());
             }
             catch (RuntimeException ignored) {
@@ -158,13 +129,13 @@ public final class StreamScope {
             while (taskIndex < tasks.size()) {
                 if (isCancelled()) return;
                 try {
-                    current = tasks.get(taskIndex++).execute(this);
+                    threadLocal.set(tasks.get(taskIndex++).execute(this));
                 } catch (RuntimeException e) {
                     e.printStackTrace();
                     this.cancel();
                 }
             }
-            if (onComplete != null) onComplete.accept(current);
+            if (onComplete != null) onComplete.accept(threadLocal.get());
             latch.countDown();
         });
         if (name != null) {

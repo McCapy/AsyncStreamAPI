@@ -5,7 +5,6 @@ import org.refined.taskNodes.*;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.*;
 
@@ -69,13 +68,21 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.setName(id);
         return this;
     }
-    public T[] toArray(IntFunction<T[]> function) {
+    public T[] toArray(long ms) {
+        scope.join(ms);
+        return (T[]) scope.getItems();
+    }
+    public T[] toArray() {
         scope.join();
         return (T[]) scope.getItems();
     }
-    public T[] toArray(IntFunction<T[]> function,long ms) {
+    public <R> R[] toArray(Class<R> clazz) {
+        scope.join();
+        return (R[]) scope.getItems();
+    }
+    public <R> R[] toArray(Class<R> clazz,long ms) {
         scope.join(ms);
-        return (T[]) scope.getItems();
+        return (R[]) scope.getItems();
     }
     // Status Operations
 
@@ -116,7 +123,7 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.injectErrorHandling(err -> {
             err.printStackTrace();
             scope.cancel();
-            return new Void[]{null};
+            return null;
         });
         return new AsyncStream<>(scope);
     }
@@ -212,6 +219,16 @@ public record AsyncStream<T>(StreamScope scope) {
     // Delay and Delay Conditionals
 
     // Miscellaneous
+    public <R> AsyncStream<R> cast(IntFunction<R[]> arrayFactory) {
+        scope.check();
+        scope.addTask(new MapNode<T,R>(item -> (R)item));
+        return new AsyncStream<>(scope);
+    }
+    public <R> AsyncStream<R> cast(Class<R> clazz) {
+        scope.check();
+        scope.addTask(new MapNode<T,R>(item -> (R)item));
+        return new AsyncStream<>(scope);
+    }
     public AsyncStream<T> submit(Runnable runnable) {
         scope.check();
         scope.addTask(new SubmitNode<>(runnable));
@@ -286,16 +303,12 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.addTask(new ForkEachNode<Void,T>(function));
         return new AsyncStream<>(scope);
     }
-    public <R> AsyncStream<R> collect(IntFunction<R[]> type,String... ids) {
+    public <R> AsyncStream<R> collect(String... ids) {
         scope.addTask(new CollectNode<R>(ids));
         return new AsyncStream<>(scope);
     }
-    public <R> AsyncStream<R> collect(IntFunction<R[]> type,Collection<String> ids) {
-        scope.addTask(new CollectNode<R>(ids));
-        return new AsyncStream<>(scope);
-    }
-    public <R> AsyncStream<R> gather(IntFunction<R[]> type) {
-        scope.addTask(new GatherNode<>(type));
+    public <R> AsyncStream<R> gather(Class<R[]> clazz) {
+        scope.addTask(new GatherNode<>());
         return new AsyncStream<>(scope);
     }
     // Fork Operations
