@@ -4,11 +4,14 @@ import org.refined.StreamScope;
 import org.refined.TaskNode;
 
 import java.util.function.Function;
+import java.util.function.IntFunction;
 
 @SuppressWarnings({"rawtypes",  "unchecked"})
 public class CollectNode<T> implements TaskNode<T> {
     final String[] id;
-    public CollectNode(String... id) {
+    final IntFunction<T[]> factory;
+    public CollectNode(IntFunction<T[]> fn, String... id) {
+        this.factory = fn;
         this.id = id;
     }
 
@@ -21,10 +24,11 @@ public class CollectNode<T> implements TaskNode<T> {
     public T[] execute(StreamScope scope) {
         try {
             Object[] items = scope.collect(id);
-            for (String string : id) {
-                scope.forkMap.remove(string);
+            T[] result = factory.apply(items.length);
+            for (int i = 0; i < items.length; i++) {
+                result[i] = (T) items[i];
             }
-            return (T[]) items;
+            return result;
         } catch (RuntimeException e) {
             if (getHandler() != null) return handler.apply(e);
             return null;

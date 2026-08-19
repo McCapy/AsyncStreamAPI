@@ -171,6 +171,11 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.addTask(new ParallelNode<>(func,pool,mapper));
         return new AsyncStream<>(scope);
     }
+    public <R> AsyncStream<R> parallel(IntFunction<R[]> func,Function<T,R> mapper) {
+        scope.check();
+        scope.addTask(new ParallelNode<>(func,mapper));
+        return new AsyncStream<>(scope);
+    }
     // Transformative Operations
 
     // Iteration and Loops
@@ -233,19 +238,14 @@ public record AsyncStream<T>(StreamScope scope) {
     // Miscellaneous
 
     // Conditionals
-    public <R> AsyncStream<R> ifNull(Supplier<R[]> supplier) {
+    public AsyncStream<T> ifNull(Supplier<T> supplier) {
         scope.check();
         scope.addTask(new IfNullNode<>(supplier));
         return new AsyncStream<>(scope);
     }
-    public <R> AsyncStream<R> ifNull(R... items) {
+    public AsyncStream<T> ifNull(T item) {
         scope.check();
-        scope.addTask(new IfNullNode<>(items));
-        return new AsyncStream<>(scope);
-    }
-    public <X extends Collection<R>,R> AsyncStream<R> ifNull(X item) {
-        scope.check();
-        scope.addTask(new IfNullNode<>((R[]) item.toArray()));
+        scope.addTask(new IfNullNode<>(() -> item));
         return new AsyncStream<>(scope);
     }
     public AsyncStream<T> cancelIfAll(Predicate<T> predicate) {
@@ -294,12 +294,12 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.addTask(new ForkEachNode<Void,T>(function));
         return new AsyncStream<>(scope);
     }
-    public <R> AsyncStream<R> collect(String... ids) {
-        scope.addTask(new CollectNode<R>(ids));
+    public <R> AsyncStream<R> collect(IntFunction<R[]> fn,String... ids) {
+        scope.addTask(new CollectNode<>(fn, ids));
         return new AsyncStream<>(scope);
     }
-    public <R> AsyncStream<R> gather(Class<R[]> clazz) {
-        scope.addTask(new GatherNode<>());
+    public <R> AsyncStream<R> gather(IntFunction<R[]> factory) {
+        scope.addTask(new GatherNode<>(factory));
         return new AsyncStream<>(scope);
     }
     // Fork Operations

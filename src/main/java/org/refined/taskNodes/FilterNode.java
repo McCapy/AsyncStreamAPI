@@ -23,20 +23,15 @@ public class FilterNode<T> implements TaskNode<T> {
     @Override
     public T[] execute(StreamScope scope) {
         try {
-            T[] items = (T[]) scope.getItems();
+            Object[] items = scope.getItems();
             List<T> result = new ArrayList<>(items.length);
-            for (T item : items) {
-                if (predicate.test(item)) {
-                    result.add(item);
+            for (Object item : items) {
+                T real = (T) item;
+                if (predicate.test(real)) {
+                    result.add(real);
                 }
             }
-            if (result.isEmpty()) {
-                return (T[]) java.lang.reflect.Array.newInstance(
-                        items.getClass().getComponentType(), 0);
-            }
-            T[] arr = (T[]) java.lang.reflect.Array.newInstance(
-                    items.getClass().getComponentType(), result.size());
-            return result.toArray(arr);
+            return (T[]) result.toArray();
         } catch (RuntimeException e) {
             if (getHandler() != null) return handler.apply(e);
             return null;

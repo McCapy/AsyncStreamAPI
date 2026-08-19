@@ -124,6 +124,8 @@ public final class StreamScope {
     }
 
     private static final ThreadFactory FACTORY = Thread.ofVirtual().factory();
+    private static final Object[] EMPTY = new Object[]{null};
+
     public void run() {
         taskIndex = 0;
         latch.countDown();
@@ -131,7 +133,8 @@ public final class StreamScope {
             while (taskIndex < tasks.size()) {
                 if (isCancelled()) return;
                 try {
-                    current = tasks.get(taskIndex++).execute(this);
+                    Object[] holder = tasks.get(taskIndex++).execute(this);
+                    current = holder == null ? EMPTY : holder;
                 } catch (RuntimeException e) {
                     e.printStackTrace();
                     this.cancel();

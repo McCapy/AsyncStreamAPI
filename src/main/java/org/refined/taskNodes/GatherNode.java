@@ -4,9 +4,15 @@ import org.refined.StreamScope;
 import org.refined.TaskNode;
 
 import java.util.function.Function;
+import java.util.function.IntFunction;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class GatherNode<T> implements TaskNode<T> {
+
+    final IntFunction<T[]> factory;
+    public GatherNode(IntFunction<T[]> fn) {
+        this.factory = fn;
+    }
 
     @Override
     public Class<GatherNode> getType() {
@@ -16,8 +22,15 @@ public class GatherNode<T> implements TaskNode<T> {
     @Override
     public T[] execute(StreamScope scope) {
         try {
-            return (T[]) scope.gather();
+            Object[] items = scope.gather();
+            T[] result = factory.apply(items.length);
+            for (int i = 0, itemsLength = items.length; i < itemsLength; i++) {
+                result[i] = (T) items[i];
+
+            }
+            return result;
         } catch (RuntimeException e) {
+            e.printStackTrace();
             if (getHandler() != null) return handler.apply(e);
             return null;
         }

@@ -13,12 +13,18 @@ import java.util.function.IntFunction;
 public class ParallelNode<T,R> implements TaskNode<R> {
     final IntFunction<R[]> array;
     final Function<T,R> mapper;
-    final ForkJoinPool pool;
+    ForkJoinPool pool;
 
     public ParallelNode(IntFunction<R[]> array,ForkJoinPool pool, Function<T,R> mapper) {
         this.array = array;
         this.mapper = mapper;
         this.pool = pool;
+    }
+
+    public ParallelNode(IntFunction<R[]> array,Function<T,R> mapper) {
+        this.array = array;
+        this.mapper = mapper;
+        this.pool = null;
     }
 
     @Override
@@ -29,7 +35,8 @@ public class ParallelNode<T,R> implements TaskNode<R> {
     @Override
     public R[] execute(StreamScope scope) {
         try {
-            return pool.invoke(new PartitionAction<>(Arrays.spliterator((T[]) scope.getItems()), mapper,array));
+            pool = pool == null ? new ForkJoinPool(8) : pool;
+            return pool.invoke(new PartitionAction<>(Arrays.spliterator((T[]) scope.getItems()), mapper, array));
         }
         catch (RuntimeException e) {
             if (handler != null) handler.apply(e);

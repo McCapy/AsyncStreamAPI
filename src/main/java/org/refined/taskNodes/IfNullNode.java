@@ -9,15 +9,10 @@ import java.util.function.Supplier;
 @SuppressWarnings({"rawtypes",  "unchecked"})
 public class IfNullNode<T> implements TaskNode<T> {
 
-    final Supplier<T[]> supplier;
+    final Supplier<T> supplier;
 
-    public IfNullNode(Supplier<T[]> supplier) {
+    public IfNullNode(Supplier<T> supplier) {
         this.supplier = supplier;
-    }
-
-    @SafeVarargs
-    public IfNullNode(T... items) {
-        this.supplier = () -> items;
     }
 
     @Override
@@ -28,9 +23,10 @@ public class IfNullNode<T> implements TaskNode<T> {
     @Override
     public T[] execute(StreamScope scope) {
         try {
+            T replacement = supplier.get();
             T[] items = (T[]) scope.getItems();
-            if (items == null || items instanceof Void[]) {
-                return supplier.get();
+            for (int i = 0; i < items.length; i++) {
+                if (items[i] == null) items[i] = replacement;
             }
             return items;
         } catch (RuntimeException e) {
