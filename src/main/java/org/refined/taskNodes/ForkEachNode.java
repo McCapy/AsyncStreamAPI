@@ -4,6 +4,7 @@ import org.refined.AsyncStream;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
+import java.util.Arrays;
 import java.util.function.Function;
 
 @SuppressWarnings({"rawtypes",  "unchecked"})

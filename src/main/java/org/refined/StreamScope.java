@@ -9,6 +9,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 @SuppressWarnings({"BooleanMethodIsAlwaysInverted", "unused", "ResultOfMethodCallIgnored", "rawtypes", "CallToPrintStackTrace", "unchecked"})
+
 public final class StreamScope {
     private static final byte UNSTARTED = 2;
     private static final byte STARTED = 1;
@@ -20,7 +21,7 @@ public final class StreamScope {
     public final LinkedHashMap<String,AsyncStream<Object>> forkMap = new LinkedHashMap<>(4);
 
     private Thread worker;
-    private static final ThreadLocal<Object[]> threadLocal = new ThreadLocal<>();
+    private Object[] current;
     public int taskIndex = 0;
     private String name = "<none>";
 
@@ -43,7 +44,7 @@ public final class StreamScope {
     }
 
     public Object[] getItems() {
-        return threadLocal.get();
+        return current;
     }
     public Thread getWorker() {
         return worker;
@@ -79,7 +80,7 @@ public final class StreamScope {
             return null;
         }
         joinForks();
-        return threadLocal.get();
+        return current;
     }
     public void cancel() {
         if (isCompleted()) return;
@@ -94,16 +95,17 @@ public final class StreamScope {
     public Object[] collect(String... ids) {
         List<Object> result = new ArrayList<>(16);
         for (String id : ids) {
-            Collections.addAll(result, forkMap.get(id).toArray());
+            Collections.addAll(result, forkMap.remove(id).toArray(Object[]::new));
         }
         return result.toArray();
     }
     public Object[] gather() {
         List<Object> result = new ArrayList<>(16);
-        for (AsyncStream<Object> value : forkMap.values()) {
-            Collections.addAll(result, value.toArray());
+        for (AsyncStream<Object> val : forkMap.values()) {
+            Collections.addAll(result, val.toArray(Object[]::new));
         }
-        return result.toArray();
+        forkMap.clear();
+        return result.toArray(Object[]::new);
     }
     // Operations
 
@@ -113,7 +115,7 @@ public final class StreamScope {
     private void joinForks(StreamScope scope) {
         for (AsyncStream<Object> stream : scope.forkMap.values()) {
             try {
-                Object[] result = stream.toArray();
+                Object[] result = stream.toArray(Object[]::new);
                 stream.scope().joinForks(stream.scope());
             }
             catch (RuntimeException ignored) {
@@ -129,13 +131,13 @@ public final class StreamScope {
             while (taskIndex < tasks.size()) {
                 if (isCancelled()) return;
                 try {
-                    threadLocal.set(tasks.get(taskIndex++).execute(this));
+                    current = tasks.get(taskIndex++).execute(this);
                 } catch (RuntimeException e) {
                     e.printStackTrace();
                     this.cancel();
                 }
             }
-            if (onComplete != null) onComplete.accept(threadLocal.get());
+            if (onComplete != null) onComplete.accept(current);
             latch.countDown();
         });
         if (name != null) {

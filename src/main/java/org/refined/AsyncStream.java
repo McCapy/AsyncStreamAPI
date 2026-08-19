@@ -25,6 +25,7 @@ import java.util.function.*;
  * @param <T> This is the array-cleaned type of the AsyncStream, T is internally treated as Object[] which is cast
  *           to/from T/T[]
  */
+
 @SuppressWarnings({"unused", "unchecked", "JavadocBlankLines", "CallToPrintStackTrace"})
 public record AsyncStream<T>(StreamScope scope) {
 
@@ -68,21 +69,11 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.setName(id);
         return this;
     }
-    public T[] toArray(long ms) {
-        scope.join(ms);
-        return (T[]) scope.getItems();
+    public T[] toArray(IntFunction<T[]> arr) {
+        return (T[]) scope.join();
     }
-    public T[] toArray() {
-        scope.join();
-        return (T[]) scope.getItems();
-    }
-    public <R> R[] toArray(Class<R> clazz) {
-        scope.join();
-        return (R[]) scope.getItems();
-    }
-    public <R> R[] toArray(Class<R> clazz,long ms) {
-        scope.join(ms);
-        return (R[]) scope.getItems();
+    public T[] toArray(IntFunction<T[]> arr,long ms) {
+        return (T[]) scope.join(ms);
     }
     // Status Operations
 
