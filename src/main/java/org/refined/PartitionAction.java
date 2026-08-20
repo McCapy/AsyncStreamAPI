@@ -32,7 +32,7 @@ public class PartitionAction<T, R> extends RecursiveTask<List<R>> {
     @SuppressWarnings("StatementWithEmptyBody")
     private List<R> computeDirectly() {
         List<R> result = new ArrayList<>((int) spliterator.estimateSize());
-        while (spliterator.tryAdvance(e -> result.add(mapper.apply(e)))) {}
+        while (spliterator.tryAdvance(e -> result.addLast(mapper.apply(e)))) {}
         return result;
     }
 

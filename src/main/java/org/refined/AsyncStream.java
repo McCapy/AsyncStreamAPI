@@ -1,5 +1,6 @@
 package org.refined;
 
+import org.jetbrains.annotations.Async;
 import org.refined.taskNodes.*;
 
 import java.time.Duration;
@@ -48,6 +49,9 @@ public record AsyncStream<T>(StreamScope scope) {
         return new AsyncStream<>(values);
     }
     public static <R> AsyncStream<R> of(Collection<R> values) {
+        return new AsyncStream<>(values);
+    }
+    public static <R> AsyncStream<R> of(List<R> values) {
         return new AsyncStream<>(values);
     }
     public static AsyncStream<Void> ofEmpty() {
@@ -174,12 +178,12 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.addTask(new SortNode<>(comparator,false));
         return this;
     }
-    public <R> AsyncStream<R> parallel(IntFunction<R[]> func,ForkJoinPool pool,Function<T,R> mapper) {
+    public <R> AsyncStream<R> parallel(ForkJoinPool pool,Function<T,R> mapper) {
         scope.check();
         scope.addTask(new ParallelNode<>(pool,mapper));
         return new AsyncStream<>(scope);
     }
-    public <R> AsyncStream<R> parallel(IntFunction<R[]> func,int threads,Function<T,R> mapper) {
+    public <R> AsyncStream<R> parallel(int threads,Function<T,R> mapper) {
         scope.check();
         scope.addTask(new ParallelNode<>(threads,mapper));
         return new AsyncStream<>(scope);
