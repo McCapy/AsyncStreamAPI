@@ -1,48 +1,42 @@
 package org.refined.taskNodes;
 
+import org.jetbrains.annotations.NotNull;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
+import java.util.List;
 import java.util.function.Function;
-import java.util.function.IntFunction;
 
 @SuppressWarnings({"rawtypes",  "unchecked"})
 public class CollectNode<T> implements TaskNode<T> {
     final String[] id;
-    final IntFunction<T[]> factory;
-    public CollectNode(IntFunction<T[]> fn, String... id) {
-        this.factory = fn;
+    public CollectNode( String... id) {
         this.id = id;
     }
 
     @Override
-    public Class<CollectNode> getType() {
+    public @NotNull Class<CollectNode> getType() {
         return CollectNode.class;
     }
 
     @Override
-    public T[] execute(StreamScope scope) {
+    public @NotNull List<T> execute(StreamScope scope) {
         try {
-            Object[] items = scope.collect(id);
-            T[] result = factory.apply(items.length);
-            for (int i = 0; i < items.length; i++) {
-                result[i] = (T) items[i];
-            }
-            return result;
+            return (List<T>) scope.collect(id);
         } catch (RuntimeException e) {
             if (getHandler() != null) return handler.apply(e);
-            return null;
+            return (List<T>) StreamScope.EMPTY;
         }
     }
 
-    Function<RuntimeException,T[]> handler;
+    Function<RuntimeException,List<T>> handler;
     @Override
-    public Function<RuntimeException, T[]> getHandler() {
+    public Function<RuntimeException, List<T>> getHandler() {
         return handler;
     }
 
     @Override
-    public void setHandler(Function<RuntimeException,T[]> function) {
+    public void setHandler(Function<RuntimeException, List<T>> function) {
         this.handler = function;
     }
 }

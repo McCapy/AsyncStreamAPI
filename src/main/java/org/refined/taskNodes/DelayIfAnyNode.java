@@ -1,9 +1,11 @@
 package org.refined.taskNodes;
 
+import org.jetbrains.annotations.NotNull;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -19,12 +21,12 @@ public class DelayIfAnyNode<T> implements TaskNode<T> {
     }
 
     @Override
-    public Class<DelayIfAnyNode> getType() {
+    public @NotNull Class<DelayIfAnyNode> getType() {
         return DelayIfAnyNode.class;
     }
 
     @Override
-    public T[] execute(StreamScope scope) {
+    public T @NotNull [] execute(StreamScope scope) {
         try {
             T[] items = (T[]) scope.getItems();
             boolean failed = true;
@@ -51,12 +53,12 @@ public class DelayIfAnyNode<T> implements TaskNode<T> {
 
     Function<RuntimeException,T[]> handler;
     @Override
-    public Function<RuntimeException, T[]> getHandler() {
+    public Function<RuntimeException, List<T>> getHandler() {
         return handler;
     }
 
     @Override
-    public void setHandler(Function<RuntimeException,T[]> function) {
+    public void setHandler(Function<RuntimeException, List<T>> function) {
         this.handler = function;
     }
 }

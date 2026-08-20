@@ -1,9 +1,11 @@
 package org.refined.taskNodes;
 
+import org.jetbrains.annotations.NotNull;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.function.Function;
 
 @SuppressWarnings({"rawtypes",  "unchecked"})
@@ -14,12 +16,12 @@ public class DelayNode<T> implements TaskNode<T> {
     }
 
     @Override
-    public Class<DelayNode> getType() {
+    public @NotNull Class<DelayNode> getType() {
         return DelayNode.class;
     }
 
     @Override
-    public T[] execute(StreamScope scope) {
+    public T @NotNull [] execute(StreamScope scope) {
         try {
             Thread.sleep(duration);
         } catch (InterruptedException e) {
@@ -31,12 +33,12 @@ public class DelayNode<T> implements TaskNode<T> {
 
     Function<RuntimeException,T[]> handler;
     @Override
-    public Function<RuntimeException, T[]> getHandler() {
+    public Function<RuntimeException, List<T>> getHandler() {
         return handler;
     }
 
     @Override
-    public void setHandler(Function<RuntimeException,T[]> function) {
+    public void setHandler(Function<RuntimeException, List<T>> function) {
         this.handler = function;
     }
 }

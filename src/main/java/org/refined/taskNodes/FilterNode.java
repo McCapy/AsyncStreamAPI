@@ -1,5 +1,6 @@
 package org.refined.taskNodes;
 
+import org.jetbrains.annotations.NotNull;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
@@ -16,12 +17,12 @@ public class FilterNode<T> implements TaskNode<T> {
     }
 
     @Override
-    public Class<FilterNode> getType() {
+    public @NotNull Class<FilterNode> getType() {
         return FilterNode.class;
     }
 
     @Override
-    public T[] execute(StreamScope scope) {
+    public T @NotNull [] execute(StreamScope scope) {
         try {
             Object[] items = scope.getItems();
             List<T> result = new ArrayList<>(items.length);
@@ -39,12 +40,12 @@ public class FilterNode<T> implements TaskNode<T> {
     }
     Function<RuntimeException,T[]> handler;
     @Override
-    public Function<RuntimeException, T[]> getHandler() {
+    public Function<RuntimeException, List<T>> getHandler() {
         return handler;
     }
 
     @Override
-    public void setHandler(Function<RuntimeException,T[]> function) {
+    public void setHandler(Function<RuntimeException, List<T>> function) {
         this.handler = function;
     }
 }

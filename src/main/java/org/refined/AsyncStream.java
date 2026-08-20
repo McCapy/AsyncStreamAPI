@@ -3,8 +3,10 @@ package org.refined;
 import org.refined.taskNodes.*;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.*;
 
@@ -32,15 +34,15 @@ public record AsyncStream<T>(StreamScope scope) {
     // Constructors and Factory-Constructors
     public AsyncStream() {
         this(new StreamScope());
-        scope.addTask(new OfferNode<Void>(items -> new Void[]{null}));
+        scope.addTask(new OfferNode<Void>(items -> null));
     }
     public AsyncStream(T... values) {
         this(new StreamScope());
-        scope.addTask(new OfferNode<T>(items -> values));
+        scope.addTask(new OfferNode<T>(items -> List.of(values)));
     }
     public AsyncStream(Collection<T> collection) {
         this(new StreamScope());
-        scope.addTask(new OfferNode<T>(item -> (T[]) collection.toArray(Object[]::new)));
+        scope.addTask(new OfferNode<T>(item -> new ArrayList<>(collection)));
     }
     public static <R> AsyncStream<R> of(R... values) {
         return new AsyncStream<>(values);
@@ -70,15 +72,15 @@ public record AsyncStream<T>(StreamScope scope) {
         return this;
     }
     public T[] toArray(IntFunction<T[]> arr) {
-        return (T[]) scope.join();
+        return (T[]) scope.join().toArray();
     }
     public T[] toArray(IntFunction<T[]> arr,long ms) {
-        return (T[]) scope.join(ms);
+        return (T[]) scope.join(ms).toArray();
     }
     // Status Operations
 
     // Error Handling
-    public <R> AsyncStream<R> catchError(Function<RuntimeException,R[]> function) {
+    public <R> AsyncStream<R> catchError(Function<RuntimeException,List<R>> function) {
         scope.check();
         scope.addTask(new CatchErrorNode<R>());
         scope.injectErrorHandling(function);
@@ -93,7 +95,7 @@ public record AsyncStream<T>(StreamScope scope) {
        });
        return this;
     }
-    public <R> AsyncStream<R> catchError(Supplier<R[]> supplier) {
+    public <R> AsyncStream<R> catchError(Supplier<List<R>> supplier) {
         scope.check();
         scope.addTask(new CatchErrorNode<>());
         scope.injectErrorHandling(err -> supplier.get());
@@ -133,15 +135,15 @@ public record AsyncStream<T>(StreamScope scope) {
     }
     public <R> AsyncStream<R> offer(R... items) {
         scope.check();
-        scope.addTask(new OfferNode<>((set) -> items));
+        scope.addTask(new OfferNode<>((set) -> List.of(items)));
         return new AsyncStream<>(scope);
     }
     public <R> AsyncStream<R> offer(Collection<R> items) {
         scope.check();
-        scope.addTask(new OfferNode<>((set) -> items.toArray()));
+        scope.addTask(new OfferNode<>((set) -> new ArrayList<>(items)));
         return new AsyncStream<>(scope);
     }
-    public AsyncStream<T> offer(Function<T[],T[]> function) {
+    public AsyncStream<T> offer(Function<List<T>,List<T>> function) {
         scope.check();
         scope.addTask(new OfferNode<>(function));
         return this;
@@ -168,12 +170,12 @@ public record AsyncStream<T>(StreamScope scope) {
     }
     public <R> AsyncStream<R> parallel(IntFunction<R[]> func,ForkJoinPool pool,Function<T,R> mapper) {
         scope.check();
-        scope.addTask(new ParallelNode<>(func,pool,mapper));
+        scope.addTask(new ParallelNode<>(pool,mapper));
         return new AsyncStream<>(scope);
     }
-    public <R> AsyncStream<R> parallel(IntFunction<R[]> func,Function<T,R> mapper) {
+    public <R> AsyncStream<R> parallel(IntFunction<R[]> func,int threads,Function<T,R> mapper) {
         scope.check();
-        scope.addTask(new ParallelNode<>(func,mapper));
+        scope.addTask(new ParallelNode<>(threads,mapper));
         return new AsyncStream<>(scope);
     }
     // Transformative Operations
@@ -189,7 +191,7 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.addTask(new PeekNode<>(consumer));
         return this;
     }
-    public <R> AsyncStream<R> loop(int repetitions,Function<T[],AsyncStream<R>> stream) {
+    public <R> AsyncStream<R> loop(int repetitions,Function<List<T>,AsyncStream<R>> stream) {
         scope.check();
         scope.addTask(new LoopNode<>(repetitions, stream));
         return new AsyncStream<>(scope);
@@ -261,9 +263,9 @@ public record AsyncStream<T>(StreamScope scope) {
     // Conditionals
 
     // Event Operations
-    public AsyncStream<T> onComplete(Consumer<T[]> consumer) {
+    public AsyncStream<T> onComplete(Consumer<List<T>> consumer) {
         scope.check();
-        scope.onComplete((Consumer<Object[]>) (Object) consumer);
+        scope.onComplete((Consumer<List<Object>>) (Object) consumer);
         return this;
     }
     public AsyncStream<T> onStart(Runnable runnable) {
@@ -294,12 +296,12 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.addTask(new ForkEachNode<Void,T>(function));
         return new AsyncStream<>(scope);
     }
-    public <R> AsyncStream<R> collect(IntFunction<R[]> fn,String... ids) {
-        scope.addTask(new CollectNode<>(fn, ids));
+    public <R> AsyncStream<R> collect(Class<R> clazz,String... ids) {
+        scope.addTask(new CollectNode<R>(ids));
         return new AsyncStream<>(scope);
     }
-    public <R> AsyncStream<R> gather(IntFunction<R[]> factory) {
-        scope.addTask(new GatherNode<>(factory));
+    public <R> AsyncStream<R> gather(Class<R> clazz) {
+        scope.addTask(new GatherNode<R>());
         return new AsyncStream<>(scope);
     }
     // Fork Operations

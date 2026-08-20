@@ -1,9 +1,11 @@
 package org.refined.taskNodes;
 
+import org.jetbrains.annotations.NotNull;
 import org.refined.AsyncStream;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
+import java.util.List;
 import java.util.function.Function;
 
 @SuppressWarnings({"rawtypes",  "unchecked"})
@@ -18,12 +20,12 @@ public class ForkNode<T,A> implements TaskNode<T> {
     }
 
     @Override
-    public Class<ForkNode> getType() {
+    public @NotNull Class<ForkNode> getType() {
         return ForkNode.class;
     }
 
     @Override
-    public T[] execute(StreamScope scope) {
+    public T @NotNull [] execute(StreamScope scope) {
         try {
             AsyncStream<?> stream = function.apply((A[]) scope.getItems());
             scope.forkMap.put(id, (AsyncStream<Object>) stream);
@@ -35,12 +37,12 @@ public class ForkNode<T,A> implements TaskNode<T> {
     }
     Function<RuntimeException,T[]> handler;
     @Override
-    public Function<RuntimeException, T[]> getHandler() {
+    public Function<RuntimeException, List<T>> getHandler() {
         return handler;
     }
 
     @Override
-    public void setHandler(Function<RuntimeException,T[]> function) {
+    public void setHandler(Function<RuntimeException, List<T>> function) {
         this.handler = function;
     }
 }

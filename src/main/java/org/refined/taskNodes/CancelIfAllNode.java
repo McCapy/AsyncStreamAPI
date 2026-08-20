@@ -1,8 +1,10 @@
 package org.refined.taskNodes;
 
+import org.jetbrains.annotations.NotNull;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
+import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -13,12 +15,12 @@ public class CancelIfAllNode<T> implements TaskNode<T> {
         this.predicate = predicate;
     }
     @Override
-    public Class<CancelIfAllNode> getType() {
+    public @NotNull Class<CancelIfAllNode> getType() {
         return CancelIfAllNode.class;
     }
 
     @Override
-    public T[] execute(StreamScope scope) {
+    public T @NotNull [] execute(StreamScope scope) {
         try {
             T[] items = (T[]) scope.getItems();
             for (T item : items) {
@@ -36,12 +38,12 @@ public class CancelIfAllNode<T> implements TaskNode<T> {
 
     Function<RuntimeException,T[]> handler;
     @Override
-    public Function<RuntimeException, T[]> getHandler() {
+    public Function<RuntimeException, List<T>> getHandler() {
         return handler;
     }
 
     @Override
-    public void setHandler(Function<RuntimeException,T[]> function) {
+    public void setHandler(Function<RuntimeException, List<T>> function) {
         this.handler = function;
     }
 }

@@ -1,8 +1,10 @@
 package org.refined.taskNodes;
 
+import org.jetbrains.annotations.NotNull;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
+import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -16,12 +18,12 @@ public class IfNullNode<T> implements TaskNode<T> {
     }
 
     @Override
-    public Class<IfNullNode> getType() {
+    public @NotNull Class<IfNullNode> getType() {
         return IfNullNode.class;
     }
 
     @Override
-    public T[] execute(StreamScope scope) {
+    public T @NotNull [] execute(StreamScope scope) {
         try {
             T replacement = supplier.get();
             T[] items = (T[]) scope.getItems();
@@ -36,12 +38,12 @@ public class IfNullNode<T> implements TaskNode<T> {
     }
     Function<RuntimeException,T[]> handler;
     @Override
-    public Function<RuntimeException, T[]> getHandler() {
+    public Function<RuntimeException, List<T>> getHandler() {
         return handler;
     }
 
     @Override
-    public void setHandler(Function<RuntimeException,T[]> function) {
+    public void setHandler(Function<RuntimeException, List<T>> function) {
         this.handler = function;
     }
 }

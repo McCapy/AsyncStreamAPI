@@ -1,49 +1,51 @@
 package org.refined.taskNodes;
 
+import org.jetbrains.annotations.NotNull;
 import org.refined.AsyncStream;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
+import java.util.List;
 import java.util.function.Function;
 
 @SuppressWarnings({"rawtypes",  "unchecked"})
 public class LoopNode<R,T> implements TaskNode<R> {
 
-    final Function<T[],AsyncStream<R>> streamFunction;
+    final Function<List<T>,AsyncStream<R>> streamFunction;
     final int repetitions;
-    public LoopNode(int repetitions, Function<T[],AsyncStream<R>> stream) {
+    public LoopNode(int repetitions, Function<List<T>,AsyncStream<R>> stream) {
         this.streamFunction = stream;
         this.repetitions = repetitions;
     }
 
     @Override
-    public Class<LoopNode> getType() {
+    public @NotNull Class<LoopNode> getType() {
         return LoopNode.class;
     }
 
     @Override
-    public R[] execute(StreamScope scope) {
+    public @NotNull List<R> execute(StreamScope scope) {
         try {
-            AsyncStream<R> stream = streamFunction.apply(((T[]) scope.getItems()));
-            Object[] current = scope.getItems();
+            AsyncStream<R> stream = streamFunction.apply(((List<T>) scope.getItems()));
+            List<Object>[] current = new List[1];
+            current[0] = scope.getItems();
             for (int i = 0; i < repetitions; i++) {
-                final Object[] finalObj = current;
-                current = stream.reset().scope().setTask(0,new OfferNode<>(_ -> finalObj)).join();
+                current[0] = stream.reset().scope().setTask(0,new OfferNode<>(_ -> current[0])).join();
             }
-            return (R[]) current;
+            return (List<R>) current[0];
         } catch (RuntimeException e) {
             if (getHandler() != null) return handler.apply(e);
-            return null;
+            return (List<R>) StreamScope.EMPTY;
         }
     }
-    Function<RuntimeException,R[]> handler;
+    Function<RuntimeException,List<R>> handler;
     @Override
-    public Function<RuntimeException, R[]> getHandler() {
+    public Function<RuntimeException, List<R>> getHandler() {
         return handler;
     }
 
     @Override
-    public void setHandler(Function<RuntimeException,R[]> function) {
+    public void setHandler(Function<RuntimeException, List<R>> function) {
         this.handler = function;
     }
 }

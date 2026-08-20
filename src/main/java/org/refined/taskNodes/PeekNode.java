@@ -1,8 +1,10 @@
 package org.refined.taskNodes;
 
+import org.jetbrains.annotations.NotNull;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -15,14 +17,14 @@ public class PeekNode<T> implements TaskNode<T> {
     }
 
     @Override
-    public Class<PeekNode> getType() {
+    public @NotNull Class<PeekNode> getType() {
         return PeekNode.class;
     }
 
     @Override
-    public T[] execute(StreamScope scope) {
+    public @NotNull List<T> execute(StreamScope scope) {
         try {
-            T[] items = (T[]) scope.getItems();
+            List<T> items = (List<T>) scope.getItems();
             for (T item : items) {
                 consumer.accept(item);
             }
@@ -30,18 +32,18 @@ public class PeekNode<T> implements TaskNode<T> {
         }
         catch (RuntimeException e) {
             if (getHandler() != null) return handler.apply(e);
-            return null;
+            return (List<T>) StreamScope.EMPTY;
         }
     }
 
-    Function<RuntimeException,T[]> handler;
+    Function<RuntimeException,List<T>> handler;
     @Override
-    public Function<RuntimeException, T[]> getHandler() {
+    public Function<RuntimeException, List<T>> getHandler() {
         return handler;
     }
 
     @Override
-    public void setHandler(Function<RuntimeException,T[]> function) {
+    public void setHandler(Function<RuntimeException, List<T>> function) {
         this.handler = function;
     }
 }

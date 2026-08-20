@@ -21,7 +21,7 @@ public final class StreamScope {
     public final LinkedHashMap<String,AsyncStream<Object>> forkMap = new LinkedHashMap<>(4);
 
     private Thread worker;
-    private Object[] current;
+    private List<Object> current;
     public int taskIndex = 0;
     private String name = "<none>";
 
@@ -43,7 +43,7 @@ public final class StreamScope {
         return cancelled.get();
     }
 
-    public Object[] getItems() {
+    public List<Object> getItems() {
         return current;
     }
     public Thread getWorker() {
@@ -62,11 +62,11 @@ public final class StreamScope {
         if (onStart != null) onStart.run();
         run();
     }
-    public Object[] join() {
+    public List<Object> join() {
         return join(-1L);
     }
-    Object[] join(long ms) {
-        if (isCancelled()) return null;
+    List<Object> join(long ms) {
+        if (isCancelled()) return EMPTY;
         if (!isStarted()) start();
         try {
             if (ms <= 0) {
@@ -77,7 +77,7 @@ public final class StreamScope {
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
-            return null;
+            return EMPTY;
         }
         joinForks();
         return current;
@@ -92,20 +92,20 @@ public final class StreamScope {
             latch.countDown();
         }
     }
-    public Object[] collect(String... ids) {
-        List<Object> result = new ArrayList<>(16);
+    public List<Object> collect(String... ids) {
+        List<Object> result = new ArrayList<>(ids.length);
         for (String id : ids) {
-            Collections.addAll(result, forkMap.remove(id).toArray(Object[]::new));
+            Collections.addAll(result, forkMap.remove(id).toArray(Object[]::new)); // fix this (.toArray())
         }
-        return result.toArray();
+        return result;
     }
-    public Object[] gather() {
-        List<Object> result = new ArrayList<>(16);
+    public List<Object> gather() {
+        List<Object> result = new ArrayList<>(forkMap.size());
         for (AsyncStream<Object> val : forkMap.values()) {
             Collections.addAll(result, val.toArray(Object[]::new));
         }
         forkMap.clear();
-        return result.toArray(Object[]::new);
+        return result;
     }
     // Operations
 
@@ -124,7 +124,7 @@ public final class StreamScope {
     }
 
     private static final ThreadFactory FACTORY = Thread.ofVirtual().factory();
-    private static final Object[] EMPTY = new Object[]{null};
+    public static final List<Object> EMPTY = new ArrayList<>(1);
 
     public void run() {
         taskIndex = 0;
@@ -133,8 +133,7 @@ public final class StreamScope {
             while (taskIndex < tasks.size()) {
                 if (isCancelled()) return;
                 try {
-                    Object[] holder = tasks.get(taskIndex++).execute(this);
-                    current = holder == null ? EMPTY : holder;
+                    current = tasks.get(taskIndex++).execute(this);
                 } catch (RuntimeException e) {
                     e.printStackTrace();
                     this.cancel();
@@ -171,10 +170,10 @@ public final class StreamScope {
         this.name = id;
     }
 
-    public Consumer<Object[]> onComplete;
+    public Consumer<List<Object>> onComplete;
     public Runnable onStart;
 
-    public void onComplete(Consumer<Object[]> onComplete) {
+    public void onComplete(Consumer<List<Object>> onComplete) {
         this.onComplete = onComplete;
     }
     public void onComplete(Runnable runnable) {
@@ -195,7 +194,7 @@ public final class StreamScope {
     }
 
     private static final RuntimeException ERROR = new RuntimeException("Operations cannot be added post-start, unless enacted by a TaskNode.");
-    public <T> void injectErrorHandling(Function<RuntimeException,T[]> function) {
+    public <T> void injectErrorHandling(Function<RuntimeException,List<T>> function) {
         ((TaskNode<T>) tasks.get(taskIndex - 2)).setHandler(function);
     }
     void check() throws RuntimeException {

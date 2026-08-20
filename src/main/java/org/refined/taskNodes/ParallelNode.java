@@ -1,5 +1,6 @@
 package org.refined.taskNodes;
 
+import org.jetbrains.annotations.NotNull;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 import org.refined.PartitionAction;
@@ -7,51 +8,57 @@ import org.refined.PartitionAction;
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
-import java.util.function.IntFunction;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class ParallelNode<T,R> implements TaskNode<R> {
-    final IntFunction<R[]> array;
     final Function<T,R> mapper;
     ForkJoinPool pool;
+    final int threads;
 
-    public ParallelNode(IntFunction<R[]> array,ForkJoinPool pool, Function<T,R> mapper) {
-        this.array = array;
+    public ParallelNode(ForkJoinPool pool, Function<T,R> mapper) {
         this.mapper = mapper;
         this.pool = pool;
+        this.threads = 0;
     }
 
-    public ParallelNode(IntFunction<R[]> array,Function<T,R> mapper) {
-        this.array = array;
+    public ParallelNode(int threads,Function<T,R> mapper) {
         this.mapper = mapper;
         this.pool = null;
+        this.threads = threads;
     }
 
     @Override
-    public Class<ParallelNode> getType() {
+    public @NotNull Class<ParallelNode> getType() {
         return ParallelNode.class;
     }
 
     @Override
-    public R[] execute(StreamScope scope) {
+    public @NotNull List<R> execute(StreamScope scope) {
         try {
-            pool = pool == null ? new ForkJoinPool(8) : pool;
-            return pool.invoke(new PartitionAction<>(Arrays.spliterator((T[]) scope.getItems()), mapper, array));
+            PartitionAction<T,R> action = new PartitionAction<>(((List<T>) scope.getItems()).spliterator(), mapper);
+            if (pool == null) {
+                try (ForkJoinPool otherPool = new ForkJoinPool(threads)) {
+                    return otherPool.invoke(action);
+                }
+            }
+            else {
+                return pool.invoke(action);
+            }
         }
         catch (RuntimeException e) {
             if (handler != null) handler.apply(e);
-            return null;
+            return (List<R>) StreamScope.EMPTY;
         }
     }
 
-    Function<RuntimeException,R[]> handler;
+    Function<RuntimeException,List<R>> handler;
     @Override
-    public Function<RuntimeException, R[]> getHandler() {
+    public Function<RuntimeException, List<R>> getHandler() {
         return handler;
     }
 
     @Override
-    public void setHandler(Function<RuntimeException, R[]> function) {
+    public void setHandler(Function<RuntimeException, List<R>> function) {
         handler = function;
     }
 }

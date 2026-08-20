@@ -1,5 +1,6 @@
 package org.refined.taskNodes;
 
+import org.jetbrains.annotations.NotNull;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
@@ -19,12 +20,12 @@ public class FlatMapNode<T,R> implements TaskNode<R> {
     }
 
     @Override
-    public Class<FlatMapNode> getType() {
+    public @NotNull Class<FlatMapNode> getType() {
         return FlatMapNode.class;
     }
 
     @Override
-    public R[] execute(StreamScope scope) {
+    public R @NotNull [] execute(StreamScope scope) {
         try {
             List<R> result = new ArrayList<>();
             for (T item : (T[]) scope.getItems()) {
@@ -39,12 +40,12 @@ public class FlatMapNode<T,R> implements TaskNode<R> {
     }
 
     @Override
-    public Function<RuntimeException, R[]> getHandler() {
+    public Function<RuntimeException, List<R>> getHandler() {
         return handler;
     }
 
     @Override
-    public void setHandler(Function<RuntimeException, R[]> function) {
+    public void setHandler(Function<RuntimeException, List<R>> function) {
         this.handler = function;
     }
 }
