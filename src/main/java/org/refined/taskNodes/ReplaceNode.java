@@ -6,36 +6,40 @@ import org.refined.TaskNode;
 
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-@SuppressWarnings({"rawtypes",  "unchecked"})
-public class IfNullNode<T> implements TaskNode<T> {
+@SuppressWarnings({"rawtypes", "unchecked"})
+public class ReplaceNode<T> implements TaskNode<T> {
 
+    final Predicate<T> predicate;
     final Supplier<T> supplier;
-
-    public IfNullNode(Supplier<T> supplier) {
+    public ReplaceNode(Predicate<T> predicate, Supplier<T> supplier) {
+        this.predicate = predicate;
         this.supplier = supplier;
     }
 
     @Override
-    public @NotNull Class<IfNullNode> getType() {
-        return IfNullNode.class;
+    public @NotNull Class<ReplaceNode> getType() {
+        return ReplaceNode.class;
     }
 
     @Override
     public @NotNull List<T> execute(StreamScope scope) {
         try {
-            List<T> result = (List<T>) scope.getItems();
-            T replacement = supplier.get();
-            for (int i = 0; i < scope.getItems().size(); i++) {
-                if (result.get(i) == null) result.set(i,replacement);
+            List<T> items = (List<T>) scope.getItems();
+            T holder = supplier.get();
+            for (int i = 0; i < items.size(); i++) {
+                if (predicate.test(items.get(i))) items.set(i, holder);
             }
-            return result;
-        } catch (RuntimeException e) {
-            if (getHandler() != null) return handler.apply(e);
+            return items;
+        }
+        catch (RuntimeException e) {
+            if (handler != null) handler.apply(e);
             return (List<T>) StreamScope.EMPTY;
         }
     }
+
     Function<RuntimeException,List<T>> handler;
     @Override
     public Function<RuntimeException, List<T>> getHandler() {

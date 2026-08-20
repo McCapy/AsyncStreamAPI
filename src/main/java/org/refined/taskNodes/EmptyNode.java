@@ -5,15 +5,19 @@ import org.refined.StreamScope;
 import org.refined.TaskNode;
 
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class EmptyNode<T> implements TaskNode<T> {
 
-    final Runnable runnable;
+    final Consumer<List<T>> consumer;
     public EmptyNode(Runnable runnable) {
-        this.runnable = runnable;
+        this.consumer = _ -> runnable.run();
+    }
+    public EmptyNode(Consumer<List<T>> consumer) {
+        this.consumer = consumer;
     }
 
     @Override
@@ -24,7 +28,7 @@ public class EmptyNode<T> implements TaskNode<T> {
     @Override
     public @NotNull List<T> execute(StreamScope scope) {
         try {
-            runnable.run();
+            consumer.accept((List<T>) scope.getItems());
         }
         catch (RuntimeException e) {
             if (getHandler() != null) return handler.apply(e);

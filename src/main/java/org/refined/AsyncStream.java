@@ -1,6 +1,5 @@
 package org.refined;
 
-import org.jetbrains.annotations.Async;
 import org.refined.taskNodes.*;
 
 import java.time.Duration;
@@ -12,24 +11,13 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.function.*;
 
 /**
- * A class that seeks to simplify Asynchronous/Reactive programming via offering a much more rich, and
- * syntactically basic & extensible DSL, this includes your own syntax, you're able to make your own
- * TaskNode's (a TaskNode is just a class which is held and executed) by implementing the TaskNode<T>
- * interface, and giving your class the generic, <T> or any other generics you may need.
- *
- * These custom TaskNode's can be added via AsyncStream<?>.scope().addTask(), there are also variations
- * of this, although; it's considered taboo to do this, as this is called unsafe tasking, you should
- * always use StreamScope.check(); and repackage your AsyncStream<T> via new AsyncStream<>(StreamScope)
- * which helps java determine the type, these methods are recommended to be in a wrapper class, which
- * holds your custom methods, as well as the AsyncStream<T> instance.
  *
  *
  * @param scope This is the scope of the stream, it is essentially the internals that dictate how the stream is to act.
- * @param <T> This is the array-cleaned type of the AsyncStream, T is internally treated as Object[] which is cast
- *           to/from T/T[]
+ * @param <T> This is the List-Cleaned type of the stream.
  */
 
-@SuppressWarnings({"unused", "unchecked", "JavadocBlankLines", "CallToPrintStackTrace"})
+@SuppressWarnings({"unused", "unchecked", "CallToPrintStackTrace"})
 public record AsyncStream<T>(StreamScope scope) {
 
     // Constructors and Factory-Constructors
@@ -49,9 +37,6 @@ public record AsyncStream<T>(StreamScope scope) {
         return new AsyncStream<>(values);
     }
     public static <R> AsyncStream<R> of(Collection<R> values) {
-        return new AsyncStream<>(values);
-    }
-    public static <R> AsyncStream<R> of(List<R> values) {
         return new AsyncStream<>(values);
     }
     public static AsyncStream<Void> ofEmpty() {
@@ -86,6 +71,12 @@ public record AsyncStream<T>(StreamScope scope) {
     }
     public List<T> toList(long ms) {
         return (List<T>) scope.join(ms);
+    }
+    public Collection<T> toCollection() {
+        return (Collection<T>) scope.join();
+    }
+    public Collection<T> toCollection(long ms) {
+        return (Collection<T>) scope.join(ms);
     }
     // Status Operations
 
@@ -163,6 +154,16 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.addTask(new EmptyNode<>(runnable));
         return new AsyncStream<>(scope);
     }
+    public AsyncStream<Void> empty() {
+        scope.check();
+        scope.addTask(new EmptyNode<>(() -> {}));
+        return new AsyncStream<>(scope);
+    }
+    public AsyncStream<Void> empty(Consumer<List<T>> consumer) {
+        scope.check();
+        scope.addTask(new EmptyNode<>(consumer));
+        return new AsyncStream<>(scope);
+    }
     public <R> AsyncStream<R> flatMap(Function<T, List<R>> function) {
         scope.check();
         scope.addTask(new FlatMapNode<>(function));
@@ -208,25 +209,7 @@ public record AsyncStream<T>(StreamScope scope) {
     }
     // Iteration and Loops
 
-    // Delay and Delay Conditionals
-    public AsyncStream<T> delay(Duration duration) {
-        scope.check();
-        scope.addTask(new DelayNode<>(duration));
-        return this;
-    }
-    // Delay and Delay Conditionals
-
     // Miscellaneous
-    public <R> AsyncStream<R> cast(IntFunction<R[]> arrayFactory) {
-        scope.check();
-        scope.addTask(new MapNode<T,R>(item -> (R)item));
-        return new AsyncStream<>(scope);
-    }
-    public <R> AsyncStream<R> cast(Class<R> clazz) {
-        scope.check();
-        scope.addTask(new MapNode<T,R>(item -> (R)item));
-        return new AsyncStream<>(scope);
-    }
     public AsyncStream<T> submit(Runnable runnable) {
         scope.check();
         scope.addTask(new SubmitNode<>(runnable));
@@ -237,18 +220,28 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.addTask(taskNode);
         return new AsyncStream<>(scope);
     }
+    public AsyncStream<T> delay(Duration duration) {
+        scope.check();
+        scope.addTask(new DelayNode<>(duration));
+        return this;
+    }
+    public AsyncStream<T> reversed() {
+        scope.check();
+        scope.addTask(new ReverseNode<>());
+        return this;
+    }
     // Miscellaneous
 
     // Conditionals
-    public AsyncStream<T> ifNull(Supplier<T> supplier) {
+    public AsyncStream<T> replace(Predicate<T> predicate, T replacement) {
         scope.check();
-        scope.addTask(new IfNullNode<>(supplier));
-        return new AsyncStream<>(scope);
+        scope.addTask(new ReplaceNode<>(predicate,() -> replacement));
+        return this;
     }
-    public AsyncStream<T> ifNull(T item) {
+    public AsyncStream<T> replace(Predicate<T> predicate, Supplier<T> replacement) {
         scope.check();
-        scope.addTask(new IfNullNode<>(() -> item));
-        return new AsyncStream<>(scope);
+        scope.addTask(new ReplaceNode<>(predicate,replacement));
+        return this;
     }
     // Conditionals
 
