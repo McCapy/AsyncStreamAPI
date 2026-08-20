@@ -38,11 +38,11 @@ public class ParallelNode<T,R> implements TaskNode<R> {
             PartitionAction<T,R> action = new PartitionAction<>(((List<T>) scope.getItems()).spliterator(), mapper);
             if (pool == null) {
                 try (ForkJoinPool otherPool = new ForkJoinPool(threads)) {
-                    return otherPool.invoke(action);
+                    return otherPool.invoke(action).reversed();
                 }
             }
             else {
-                return pool.invoke(action);
+                return pool.invoke(action).reversed();
             }
         }
         catch (RuntimeException e) {
