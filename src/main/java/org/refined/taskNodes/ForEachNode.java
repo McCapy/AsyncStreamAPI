@@ -21,18 +21,17 @@ public class ForEachNode<T> implements TaskNode<T> {
     }
 
     @Override
-    public T @NotNull [] execute(StreamScope scope) {
+    public @NotNull List<T> execute(StreamScope scope) {
         try {
-            T[] items = (T[]) scope.getItems();
-            for (T item : items) {
+            for (T item : (List<T>) scope.getItems()) {
                 consumer.accept(item);
             }
         } catch (RuntimeException e) {
             if (getHandler() != null) return handler.apply(e);
         }
-        return null;
+        return (List<T>) StreamScope.EMPTY;
     }
-    Function<RuntimeException,T[]> handler;
+    Function<RuntimeException,List<T>> handler;
     @Override
     public Function<RuntimeException, List<T>> getHandler() {
         return handler;

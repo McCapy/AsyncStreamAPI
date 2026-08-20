@@ -71,11 +71,17 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.setName(id);
         return this;
     }
-    public T[] toArray(IntFunction<T[]> arr) {
+    public T[] toArray() {
         return (T[]) scope.join().toArray();
     }
-    public T[] toArray(IntFunction<T[]> arr,long ms) {
+    public T[] toArray(long ms) {
         return (T[]) scope.join(ms).toArray();
+    }
+    public List<T> toList() {
+        return (List<T>) scope.join();
+    }
+    public List<T> toList(long ms) {
+        return (List<T>) scope.join(ms);
     }
     // Status Operations
 
@@ -91,7 +97,7 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.addTask(new CatchErrorNode<>());
         scope.injectErrorHandling(err -> {
            exceptionConsumer.accept(err);
-           return null;
+           return StreamScope.EMPTY;
        });
        return this;
     }
@@ -106,7 +112,7 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.addTask(new CatchErrorNode<>());
         scope.injectErrorHandling(err -> {
             runnable.run();
-            return null;
+            return StreamScope.EMPTY;
         });
         return this;
     }
@@ -116,7 +122,7 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.injectErrorHandling(err -> {
             err.printStackTrace();
             scope.cancel();
-            return null;
+            return StreamScope.EMPTY;
         });
         return new AsyncStream<>(scope);
     }
@@ -153,7 +159,7 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.addTask(new EmptyNode<>(runnable));
         return new AsyncStream<>(scope);
     }
-    public <R> AsyncStream<R> flatMap(Function<T, R[]> function) {
+    public <R> AsyncStream<R> flatMap(Function<T, List<R>> function) {
         scope.check();
         scope.addTask(new FlatMapNode<>(function));
         return new AsyncStream<>(scope);
@@ -199,16 +205,6 @@ public record AsyncStream<T>(StreamScope scope) {
     // Iteration and Loops
 
     // Delay and Delay Conditionals
-    public AsyncStream<T> delayIfAll(Predicate<T> predicate, Duration duration) {
-        scope.check();
-        scope.addTask(new DelayIfAllNode<>(predicate,duration));
-        return this;
-    }
-    public AsyncStream<T> delayIfAny(Predicate<T> predicate, Duration duration) {
-        scope.check();
-        scope.addTask(new DelayIfAnyNode<>(predicate,duration));
-        return this;
-    }
     public AsyncStream<T> delay(Duration duration) {
         scope.check();
         scope.addTask(new DelayNode<>(duration));
@@ -250,16 +246,6 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.addTask(new IfNullNode<>(() -> item));
         return new AsyncStream<>(scope);
     }
-    public AsyncStream<T> cancelIfAll(Predicate<T> predicate) {
-        scope.check();
-        scope.addTask(new CancelIfAllNode<>(predicate));
-        return this;
-    }
-    public AsyncStream<T> cancelIfAny(Predicate<T> predicate) {
-        scope.check();
-        scope.addTask(new CancelIfAnyNode<>(predicate));
-        return this;
-    }
     // Conditionals
 
     // Event Operations
@@ -286,7 +272,7 @@ public record AsyncStream<T>(StreamScope scope) {
     // Event Operations
 
     // Fork operations
-    public <R> AsyncStream<Void> fork(String id, Function<T[],AsyncStream<?>> function) {
+    public <R> AsyncStream<Void> fork(String id, Function<List<T>,AsyncStream<?>> function) {
         scope.check();
         scope.addTask(new ForkNode<R,T>(id, function));
         return new AsyncStream<>(scope);
@@ -300,7 +286,7 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.addTask(new CollectNode<R>(ids));
         return new AsyncStream<>(scope);
     }
-    public <R> AsyncStream<R> gather(Class<R> clazz) {
+    public <R> AsyncStream<List<R>> gather(Class<R> clazz) {
         scope.addTask(new GatherNode<R>());
         return new AsyncStream<>(scope);
     }

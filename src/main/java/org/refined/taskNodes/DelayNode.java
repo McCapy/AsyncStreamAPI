@@ -21,17 +21,17 @@ public class DelayNode<T> implements TaskNode<T> {
     }
 
     @Override
-    public T @NotNull [] execute(StreamScope scope) {
+    public @NotNull List<T> execute(StreamScope scope) {
         try {
             Thread.sleep(duration);
         } catch (InterruptedException e) {
             if (getHandler() != null) return handler.apply(new RuntimeException(e.getMessage()));
-            return null;
+            return (List<T>) StreamScope.EMPTY;
         }
-        return (T[]) scope.getItems();
+        return (List<T>) scope.getItems();
     }
 
-    Function<RuntimeException,T[]> handler;
+    Function<RuntimeException,List<T>> handler;
     @Override
     public Function<RuntimeException, List<T>> getHandler() {
         return handler;

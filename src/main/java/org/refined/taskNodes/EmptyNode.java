@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.function.Function;
 
 
-@SuppressWarnings({"rawtypes" })
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class EmptyNode<T> implements TaskNode<T> {
 
     final Runnable runnable;
@@ -22,18 +22,18 @@ public class EmptyNode<T> implements TaskNode<T> {
     }
 
     @Override
-    public T @NotNull [] execute(StreamScope scope) {
+    public @NotNull List<T> execute(StreamScope scope) {
         try {
             runnable.run();
         }
         catch (RuntimeException e) {
             if (getHandler() != null) return handler.apply(e);
         }
-        return null;
+        return (List<T>) StreamScope.EMPTY;
 
     }
 
-    Function<RuntimeException,T[]> handler;
+    Function<RuntimeException,List<T>> handler;
     @Override
     public Function<RuntimeException, List<T>> getHandler() {
         return handler;

@@ -95,14 +95,14 @@ public final class StreamScope {
     public List<Object> collect(String... ids) {
         List<Object> result = new ArrayList<>(ids.length);
         for (String id : ids) {
-            Collections.addAll(result, forkMap.remove(id).toArray(Object[]::new)); // fix this (.toArray())
+            Collections.addAll(result, forkMap.remove(id).toList());
         }
         return result;
     }
     public List<Object> gather() {
         List<Object> result = new ArrayList<>(forkMap.size());
         for (AsyncStream<Object> val : forkMap.values()) {
-            Collections.addAll(result, val.toArray(Object[]::new));
+            Collections.addAll(result, val.toList());
         }
         forkMap.clear();
         return result;
@@ -115,8 +115,9 @@ public final class StreamScope {
     private void joinForks(StreamScope scope) {
         for (AsyncStream<Object> stream : scope.forkMap.values()) {
             try {
-                Object[] result = stream.toArray(Object[]::new);
-                stream.scope().joinForks(stream.scope());
+                StreamScope sScope = stream.scope();
+                sScope.join();
+                sScope.joinForks(stream.scope());
             }
             catch (RuntimeException ignored) {
             }
@@ -137,6 +138,7 @@ public final class StreamScope {
                 } catch (RuntimeException e) {
                     e.printStackTrace();
                     this.cancel();
+                    break;
                 }
             }
             if (onComplete != null) onComplete.accept(current);
@@ -157,7 +159,7 @@ public final class StreamScope {
         taskIndex += nodes.size();
         tasks.addAll(nodes);
     }
-    public void addTask(TaskNode node, int index) {
+    public void insertTask(TaskNode node, int index) {
         taskIndex++;
         tasks.add(index, node);
     }

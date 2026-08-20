@@ -16,11 +16,11 @@ public class CatchErrorNode<T> implements TaskNode<T> {
     }
 
     @Override
-    public T @NotNull [] execute(StreamScope scope) {
-        return (T[]) scope.getItems();
+    public @NotNull List<T> execute(StreamScope scope) {
+        return (List<T>) scope.getItems();
     }
 
-    Function<RuntimeException,T[]> handler;
+    Function<RuntimeException,List<T>> handler;
     @Override
     public Function<RuntimeException, List<T>> getHandler() {
         return handler;

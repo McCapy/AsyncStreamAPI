@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Spliterator;
 import java.util.concurrent.RecursiveTask;
 import java.util.function.Function;
-import java.util.function.IntFunction;
 
 public class PartitionAction<T, R> extends RecursiveTask<List<R>> {
 

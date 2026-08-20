@@ -12,9 +12,9 @@ import java.util.function.Function;
 public class ForkNode<T,A> implements TaskNode<T> {
 
     final String id;
-    final Function<A[],AsyncStream<?>> function;
+    final Function<List<A>,AsyncStream<?>> function;
 
-    public ForkNode(String id,Function<A[],AsyncStream<?>> function) {
+    public ForkNode(String id,Function<List<A>,AsyncStream<?>> function) {
         this.id = id;
         this.function = function;
     }
@@ -25,17 +25,15 @@ public class ForkNode<T,A> implements TaskNode<T> {
     }
 
     @Override
-    public T @NotNull [] execute(StreamScope scope) {
+    public @NotNull List<T> execute(StreamScope scope) {
         try {
-            AsyncStream<?> stream = function.apply((A[]) scope.getItems());
-            scope.forkMap.put(id, (AsyncStream<Object>) stream);
-            stream.start();
+            scope.forkMap.put(id, (AsyncStream<Object>) function.apply((List<A>) scope.getItems()).start());
         } catch (RuntimeException e) {
             if (getHandler() != null) return handler.apply(e);
         }
-        return null;
+        return (List<T>) StreamScope.EMPTY;
     }
-    Function<RuntimeException,T[]> handler;
+    Function<RuntimeException,List<T>> handler;
     @Override
     public Function<RuntimeException, List<T>> getHandler() {
         return handler;

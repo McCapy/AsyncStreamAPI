@@ -4,7 +4,6 @@ import org.jetbrains.annotations.NotNull;
 import org.refined.StreamScope;
 import org.refined.TaskNode;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -22,23 +21,19 @@ public class FilterNode<T> implements TaskNode<T> {
     }
 
     @Override
-    public T @NotNull [] execute(StreamScope scope) {
+    public @NotNull List<T> execute(StreamScope scope) {
         try {
-            Object[] items = scope.getItems();
-            List<T> result = new ArrayList<>(items.length);
-            for (Object item : items) {
-                T real = (T) item;
-                if (predicate.test(real)) {
-                    result.add(real);
-                }
+            List<T> result = (List<T>) scope.getItems();
+            for (int i = 0, resultSize = result.size(); i < resultSize; i++) {
+                if (!predicate.test(result.get(i))) result.remove(i);
             }
-            return (T[]) result.toArray();
+            return result;
         } catch (RuntimeException e) {
             if (getHandler() != null) return handler.apply(e);
-            return null;
+            return (List<T>) StreamScope.EMPTY;
         }
     }
-    Function<RuntimeException,T[]> handler;
+    Function<RuntimeException,List<T>> handler;
     @Override
     public Function<RuntimeException, List<T>> getHandler() {
         return handler;

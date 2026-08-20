@@ -5,17 +5,16 @@ import org.refined.StreamScope;
 import org.refined.TaskNode;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class FlatMapNode<T,R> implements TaskNode<R> {
 
-    private final Function<T, R[]> function;
-    private Function<RuntimeException, R[]> handler;
+    private final Function<T, List<R>> function;
+    private Function<RuntimeException, List<R>> handler;
 
-    public FlatMapNode(Function<T, R[]> function) {
+    public FlatMapNode(Function<T, List<R>> function) {
         this.function = function;
     }
 
@@ -25,17 +24,17 @@ public class FlatMapNode<T,R> implements TaskNode<R> {
     }
 
     @Override
-    public R @NotNull [] execute(StreamScope scope) {
+    public @NotNull List<R> execute(StreamScope scope) {
         try {
             List<R> result = new ArrayList<>();
-            for (T item : (T[]) scope.getItems()) {
-                Collections.addAll(result, function.apply(item));
+            for (T item : (List<T>) scope.getItems()) {
+                result.addAll(function.apply(item));
             }
-            return (R[]) result.toArray();
+            return result;
         }
         catch (RuntimeException e) {
             if (handler != null) return handler.apply(e);
-            return null;
+            return (List<R>) StreamScope.EMPTY;
         }
     }
 

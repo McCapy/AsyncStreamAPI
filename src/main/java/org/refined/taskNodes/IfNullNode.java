@@ -23,20 +23,20 @@ public class IfNullNode<T> implements TaskNode<T> {
     }
 
     @Override
-    public T @NotNull [] execute(StreamScope scope) {
+    public @NotNull List<T> execute(StreamScope scope) {
         try {
+            List<T> result = (List<T>) scope.getItems();
             T replacement = supplier.get();
-            T[] items = (T[]) scope.getItems();
-            for (int i = 0; i < items.length; i++) {
-                if (items[i] == null) items[i] = replacement;
+            for (int i = 0; i < scope.getItems().size(); i++) {
+                if (result.get(i) == null) result.set(i,replacement);
             }
-            return items;
+            return result;
         } catch (RuntimeException e) {
             if (getHandler() != null) return handler.apply(e);
-            return null;
+            return (List<T>) StreamScope.EMPTY;
         }
     }
-    Function<RuntimeException,T[]> handler;
+    Function<RuntimeException,List<T>> handler;
     @Override
     public Function<RuntimeException, List<T>> getHandler() {
         return handler;
