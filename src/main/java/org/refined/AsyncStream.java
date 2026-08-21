@@ -3,10 +3,7 @@ package org.refined;
 import org.refined.taskNodes.*;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.*;
 
@@ -60,9 +57,8 @@ public record AsyncStream<T>(StreamScope scope) {
         scope.setName(id);
         return this;
     }
-    public T[] toArray() {
-        return (T[]) scope.join().toArray();
-    }
+
+    public T[] toArray() { return (T[]) scope.join().toArray(); }
     public T[] toArray(long ms) {
         return (T[]) scope.join(ms).toArray();
     }
