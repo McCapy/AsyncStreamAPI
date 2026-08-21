@@ -58,6 +58,13 @@ public record AsyncStream<T>(StreamScope scope) {
         return this;
     }
 
+
+    public Optional<T[]> toArray(Function<List<T>, Optional<T[]>> fn) {}
+    public Optional<T[]> toArray(Function<List<T>, Optional<T[]>> fn, long ms) {}
+    public Optional<List<T>> toList(Function<List<T>,Optional<List<T>>> opt) {
+
+    }
+
     public T[] toArray() { return (T[]) scope.join().toArray(); }
     public T[] toArray(long ms) {
         return (T[]) scope.join(ms).toArray();
