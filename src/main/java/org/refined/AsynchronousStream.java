@@ -35,22 +35,22 @@ public abstract class AsynchronousStream<T> {
     // Status Operations
     public AsynchronousStream<T> start() {
         scope.start();
-        return this;
+        return  this;
     }
     public void cancel() {
         scope.cancel();
     }
     public AsynchronousStream<T> reset() {
-        return repack(scope.reset());
+        return  repack(scope.reset());
     }
     public AsynchronousStream<T> named(String id) {
         scope.check();
         scope.setName(id);
-        return this;
+        return  this;
     }
     public AsynchronousStream<T> precondition(Consumer<StreamScope> consumer) {
         consumer.accept(scope);
-        return this;
+        return  this;
     }
     // Status Operations
 
@@ -93,7 +93,7 @@ public abstract class AsynchronousStream<T> {
                 throw real;
             }
         });
-        return this;
+        return  this;
     }
     public AsynchronousStream<T> intercept(BiConsumer<RuntimeException,StreamScope> consumer) {
         scope.check();
@@ -108,7 +108,7 @@ public abstract class AsynchronousStream<T> {
                 throw real;
             }
         });
-        return this;
+        return  this;
     }
     // Error Handling
 
@@ -116,62 +116,62 @@ public abstract class AsynchronousStream<T> {
     public AsynchronousStream<T> filter(Predicate<T> predicate) {
         scope.check();
         scope.addTask(new TaskNode.FilterNode<>(predicate));
-        return this;
+        return  this;
     }
     public <R> AsynchronousStream<R> map(Function<T,R> function) {
         scope.check();
         scope.addTask(new TaskNode.MapNode<>(function));
-        return repack(scope);
+        return  repack(scope);
     }
     public <R> AsynchronousStream<R> offer(R... items) {
         scope.check();
         scope.addTask(new TaskNode.OfferNode<>((set) -> List.of(items)));
-        return repack(scope);
+        return  repack(scope);
     }
-    public <R> AsynchronousStream<R> offer(Collection<R> items) {
+    public <R> AsynchronousStream<R>offer(Collection<R> items) {
         scope.check();
         scope.addTask(new TaskNode.OfferNode<>((set) -> new ArrayList<>(items)));
-        return repack(scope);
+        return  repack(scope);
     }
     public AsynchronousStream<T> offer(Function<List<T>,List<T>> function) {
         scope.check();
         scope.addTask(new TaskNode.OfferNode<>(function));
-        return this;
+        return  this;
     }
     public AsynchronousStream<Void> empty(Runnable runnable) {
         scope.check();
         scope.addTask(new TaskNode.EmptyNode<>(runnable));
-        return repack(scope);
+        return  this.repack(scope);
     }
     public AsynchronousStream<Void> empty() {
         scope.check();
         scope.addTask(new TaskNode.EmptyNode<>(() -> {}));
-        return repack(scope);
+        return  this.repack(scope);
     }
     public AsynchronousStream<Void> empty(Consumer<List<T>> consumer) {
         scope.check();
         scope.addTask(new TaskNode.EmptyNode<>(consumer));
-        return repack(scope);
+        return  this.repack(scope);
     }
     public <R> AsynchronousStream<R> flatMap(Function<T, List<R>> function) {
         scope.check();
         scope.addTask(new TaskNode.FlatMapNode<>(function));
-        return repack(scope);
+        return  this.repack(scope);
     }
     public AsynchronousStream<T> parallelSort(Comparator<T> comparator) {
         scope.check();
         scope.addTask(new TaskNode.SortNode<>(comparator,true));
-        return this;
+        return  this;
     }
     public AsynchronousStream<T> sort(Comparator<T> comparator) {
         scope.check();
         scope.addTask(new TaskNode.SortNode<>(comparator,false));
-        return this;
+        return  this;
     }
     public <R> AsynchronousStream<R> parallel(ForkJoinPool pool, Function<T,R> mapper) {
         scope.check();
         scope.addTask(new TaskNode.ParallelNode<>(pool,mapper));
-        return repack(scope);
+        return  repack(scope);
     }
     public <R> AsynchronousStream<R> parallel(int threads,Function<T,R> mapper) {
         scope.check();
@@ -184,7 +184,7 @@ public abstract class AsynchronousStream<T> {
     public AsynchronousStream<Void> forEach(Consumer<T> consumer) {
         scope.check();
         scope.addTask(new TaskNode.ForEachNode<>(consumer));
-        return repack(scope);
+        return  this.repack(scope);
     }
     public AsynchronousStream<T> peek(Consumer<T> consumer) {
         scope.check();
