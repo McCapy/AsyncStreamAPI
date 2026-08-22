@@ -5,8 +5,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 @SuppressWarnings({"BooleanMethodIsAlwaysInverted", "unused", "ResultOfMethodCallIgnored", "rawtypes", "CallToPrintStackTrace", "unchecked"})
 
@@ -18,12 +18,12 @@ public final class StreamScope {
     private final AtomicBoolean cancelled = new AtomicBoolean(false);
     private final CountDownLatch latch = new CountDownLatch(2);
     private final ArrayList<TaskNode> tasks = new ArrayList<>(2);
-    public final LinkedHashMap<String,AsyncStream<Object>> forkMap = new LinkedHashMap<>(4);
+    public final LinkedHashMap<String,AsynchronousStream<Object>> forkMap = new LinkedHashMap<>(4);
 
     private Thread worker;
     private List<Object> current;
     public int taskIndex = 0;
-    private String name = "<none>";
+    private String name = "N/A";
 
     public Runnable onCancel;
     void onCancel(Runnable runnable) {
@@ -101,8 +101,8 @@ public final class StreamScope {
     }
     public List<Object> gather() {
         List<Object> result = new ArrayList<>(forkMap.size());
-        for (AsyncStream<Object> val : forkMap.values()) {
-            Collections.addAll(result, val.toList());
+        for (AsynchronousStream<Object> val : forkMap.values()) {
+            result.addAll(val.toList());
         }
         forkMap.clear();
         return result;
@@ -113,24 +113,28 @@ public final class StreamScope {
         joinForks(this);
     }
     private void joinForks(StreamScope scope) {
-        for (AsyncStream<Object> stream : scope.forkMap.values()) {
+        for (AsynchronousStream<Object> stream : scope.forkMap.values()) {
             try {
-                StreamScope sScope = stream.scope();
+                StreamScope sScope = stream.scope;
                 sScope.join();
-                sScope.joinForks(stream.scope());
+                sScope.joinForks(sScope);
             }
             catch (RuntimeException ignored) {
             }
         }
     }
 
-    private static final ThreadFactory FACTORY = Thread.ofVirtual().factory();
+    public void setFactory(ThreadFactory factory) {
+        this.factory = factory;
+    }
+    private ThreadFactory factory = null;
     public static final List<Object> EMPTY = new ArrayList<>(1);
 
     public void run() {
         taskIndex = 0;
         latch.countDown();
-        worker = FACTORY.newThread(() -> {
+        if (factory == null) factory = Thread.ofVirtual().factory();
+        worker = factory.newThread(() -> {
             while (taskIndex < tasks.size()) {
                 if (isCancelled()) return;
                 try {
@@ -192,12 +196,13 @@ public final class StreamScope {
         scope.onComplete = onComplete;
         scope.addTasks(this.getTasks());
         scope.setName(this.getId());
+        this.cancel();
         return scope;
     }
 
     private static final RuntimeException ERROR = new RuntimeException("Operations cannot be added post-start, unless enacted by a TaskNode.");
-    public <T> void injectErrorHandling(Function<RuntimeException,List<T>> function) {
-        ((TaskNode<T>) tasks.get(taskIndex - 2)).setHandler(function);
+    public <T> void injectErrorHandling(BiFunction<RuntimeException, StreamScope, List<?>> function) {
+        ((TaskNode<T>) tasks.get(taskIndex - 1)).handler(function);
     }
     void check() throws RuntimeException {
         if (!this.isUnstarted()) throw ERROR;

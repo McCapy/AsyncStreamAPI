@@ -34,5 +34,4 @@ public class PartitionAction<T, R> extends RecursiveTask<List<R>> {
         while (spliterator.tryAdvance(e -> result.add(mapper.apply(e)))) {}
         return result;
     }
-
 }

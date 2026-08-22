@@ -1,10 +1,11 @@
 import org.refined.AsyncStream;
+@SuppressWarnings({"unused"})
 void main() {
+    List<Integer> holder = IntStream.rangeClosed(1,25_000_000).boxed().toList();
+    long ms = System.currentTimeMillis();
     List<Integer> result =
-        new AsyncStream<>(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20)
-            .parallel(8,item -> item * 10)
-            .replace(item -> item % 3 == 0,999)
-            .filter(item -> item % 3 == 0)
+        new AsyncStream<>(holder)
+            .map(item -> item * 10)
             .toList();
-    System.out.println(result);
+    System.out.println(System.currentTimeMillis() - ms + "ms");
 }
