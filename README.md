@@ -71,44 +71,42 @@
 #### Forking Operations
 ```java
 void main() {
-  List<Integer> result =
-    new AsyncStream<>(1,2,3,4,5,6,7,8,9,10)
-      .forkEach(item -> {
-        return
-          new AsyncStream<>(item)
-            .map(other -> {
-              return other * 10
+    List<Integer> result =
+        new AsyncStream<>(1,2,3,4,5,6,7,8,9,10)
+            .forkEach(item -> {
+                return
+                    new AsyncStream<>(item)
+                        .map(other -> other * 10);
             })
-      })
-      .gather(Integer.class)
-      .toList()
+            .gather(Integer.class)
+            .toList();
 }
 // This creates 10 forks, and gathers all of them together,
 // with a result of: List<Integer>{10,20,30,40,50,60,70,80,90,100}
 ```
 ```java
 void main() {
-  List<Integer> result =
-    new AsyncStream<>(1,2,3,4,5)
-      .fork("example-id",items ->
-        new AsyncStream<>(items)
-          .map(item -> item * 10)
-      )
-      // Here is where you would do other work, that is independent of that calculation
-      .collect(Integer.class,"example-id")
-      .toList();
+    List<Integer> result =
+        new AsyncStream<>(1,2,3,4,5)
+            .fork("example-id",items ->
+                new AsyncStream<>(items)
+                    .map(item -> item * 10)
+            )
+            // Here is where you would do other work, that is independent of that calculation
+            .collect(Integer.class,"example-id")
+            .toList();
 }
 // This creates 1 fork, which handles the work of mapping all 5 items to <item> * 10
 ```
 #### Intermediate Operations
 ```java
 void main() {
-  List<Integer> result =
-    new AsyncStream<>(1,2,3,4,5)
-      .map(item -> new AsyncStream<>(item).map(other -> other * 2))
-      .flatMap(stream -> stream.toList())
-      .reversed()
-      .toList();
+    List<Integer> result =
+        new AsyncStream<>(1,2,3,4,5)
+            .map(item -> new AsyncStream<>(item).map(other -> other * 2))
+            .flatMap(stream -> stream.toList())
+            .reversed()
+            .toList();
 }
 // This multiples each item by two in a seprate stream,
 // and then flattens it back into AsyncStream<Integer> and then
@@ -116,52 +114,52 @@ void main() {
 ```
 ```java
 void main() {
-  Optional<List<Integer>> result =
-    new AsyncStream<>(1,2,3,4,5)
-      .map(item -> item * 100)
-      .toAbstract(Optional::of);
+    Optional<List<Integer>> result =
+        new AsyncStream<>(1,2,3,4,5)
+            .map(item -> item * 100)
+            .toAbstract(Optional::of);
 }
 // Wraps the list of results in an optional. You can also do other things
 // Like convert it into an Optional<Integer[]>, etc.
 ```
 ```java
 void main() {
-  List<Integer> result =
-    new AsyncStream<>(1,2,3,4,5)
-      .loop(10,(items) -> new AsyncStream<>(items).map(item -> item + 1))
-      .toList();
+    List<Integer> result =
+        new AsyncStream<>(1,2,3,4,5)
+            .loop(10,(items) -> new AsyncStream<>(items).map(item -> item + 1))
+            .toList();
 }
 // Adds 10 to every item in the stream (via a loop) and then converts it into a list.
 ```
 ```java
 void main() {
-  List<Integer> result =
-    new AsyncStream<>(1,2,3,4,5)
-      .map(item -> {
-        if (item == 3) throw new RuntimeException("EXAMPLE!");
-        return item * 2;
-      })
-      .intercept((error,scope) -> {
-        error.printStackTrace();
-        scope.cancel(); 
-      })
-      .toList();
-      // Semantically, this just prints the stack trace, and then cancels the AsyncStream whenever it encounters an error.
-      // Although, we will explore the other iteration of this, which continues execution with a supplied value.
+    List<Integer> result =
+        new AsyncStream<>(1,2,3,4,5)
+            .map(item -> {
+                if (item == 3) throw new RuntimeException("EXAMPLE!");
+                return item * 2;
+            })
+            .intercept((error,scope) -> {
+                error.printStackTrace();
+                scope.cancel();
+            })
+            .toList();
+    // Semantically, this just prints the stack trace, and then cancels the AsyncStream whenever it encounters an error.
+    // Although, we will explore the other iteration of this, which continues execution with a supplied value.
 }
 ```
 ```java
 void main() {
-  List<integer> result =
-    new AsyncStream<>(1,2,3,4,5)
-      .map(item -> {
-        if (item == 3) throw new RuntimeException("EXAMPLE!");
-        return item * 2;
-      })
-      .intercept((error,scope) -> {
-        error.printStackTrace();
-        return List.of(1,2,3,4);
-      })
-      .toList();
+    List<integer> result =
+        new AsyncStream<>(1,2,3,4,5)
+            .map(item -> {
+                if (item == 3) throw new RuntimeException("EXAMPLE!");
+                return item * 2;
+            })
+            .intercept((error,scope) -> {
+                error.printStackTrace();
+                return List.of(1,2,3,4);
+            })
+            .toList();
 }
 ```
