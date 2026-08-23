@@ -92,8 +92,8 @@ public final class StreamScope {
             latch.countDown();
         }
     }
-    public List<Object> collect(String... ids) {
-        List<Object> result = new ArrayList<>(ids.length);
+    public List<Object> collect(List<String> ids) {
+        List<Object> result = new ArrayList<>(ids.size());
         for (String id : ids) {
             Collections.addAll(result, forkMap.remove(id).toList());
         }
@@ -138,7 +138,7 @@ public final class StreamScope {
             while (taskIndex < tasks.size()) {
                 if (isCancelled()) return;
                 try {
-                    current = tasks.get(taskIndex++).execute(this);
+                    current = tasks.get(taskIndex++).execute(this,current);
                 } catch (RuntimeException e) {
                     e.printStackTrace();
                     this.cancel();

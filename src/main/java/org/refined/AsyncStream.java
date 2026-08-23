@@ -61,11 +61,6 @@ public final class AsyncStream<T> extends AsynchronousStream<T> {
     }
 
     @Override
-    public AsyncStream<T> precondition(Consumer<StreamScope> consumer) {
-        return (AsyncStream<T>) super.precondition(consumer);
-    }
-
-    @Override
     public <R> R toAbstract(Function<List<T>, R> mapper) {
         return super.toAbstract(mapper);
     }
@@ -256,7 +251,7 @@ public final class AsyncStream<T> extends AsynchronousStream<T> {
     }
 
     @Override
-    public <R> AsyncStream<R> collect(Class<R> clazz, String... ids) {
+    public <R> AsyncStream<R> collect(Class<R> clazz, List<String> ids) {
         return (AsyncStream<R>) super.collect(clazz, ids);
     }
 

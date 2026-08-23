@@ -48,10 +48,6 @@ public abstract class AsynchronousStream<T> {
         scope.setName(id);
         return  this;
     }
-    public AsynchronousStream<T> precondition(Consumer<StreamScope> consumer) {
-        consumer.accept(scope);
-        return  this;
-    }
     // Status Operations
 
     // Collection Operations
@@ -268,7 +264,7 @@ public abstract class AsynchronousStream<T> {
         scope.addTask(new TaskNode.ForkEachNode<Void,T>(function));
         return repack(scope);
     }
-    public <R> AsynchronousStream<R> collect(Class<R> clazz,String... ids) {
+    public <R> AsynchronousStream<R> collect(Class<R> clazz,List<String> ids) {
         scope.addTask(new TaskNode.CollectNode<R>(ids));
         return repack(scope);
     }
