@@ -6,14 +6,8 @@ import org.refined.AsyncStream;
 void main() {
     List<Integer> result =
         new AsyncStream<>(1,2,3,4,5,6,7,8,10)
-            .map(item -> {
-                if (item == 5) throw new RuntimeException("Failed");
-                return item * 2;
-            })
-            .intercept((err,scope) -> {
-                err.printStackTrace();
-                return List.of(1,2,3,4,5);
-            })
+            .map(holder -> new AsyncStream<>(holder).map(item -> item * 10))
+            .flatMap(AsyncStream::toList)
             .toList();
     System.out.println(result);
 }

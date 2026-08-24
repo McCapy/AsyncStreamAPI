@@ -3,10 +3,7 @@ package org.refined;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.*;
 
@@ -227,10 +224,14 @@ public abstract class TaskNode<T> {
 
         @Override
         public @NotNull List<R> execute(StreamScope scope, List<Object> items) throws RuntimeException {
-            try { // only good thing that game from this update btw (lowered memory allocation to n as opposed to 2n
+            try {
                 Function<T,R> fn = (Function<T, R>) params.getFirst();
-                items.replaceAll((object) -> fn.apply((T)object));
-                return (List<R>) items;
+                List<R> result = new ArrayList<>(items.size());
+                Iterator<T> iterator = (Iterator<T>) items.iterator();
+                while (iterator.hasNext()) {
+                    result.add(fn.apply(iterator.next()));
+                }
+                return result;
             } catch (RuntimeException e) {
                 if (handler() != null) return (List<R>) handler.apply(e, scope);
                 return (List<R>) StreamScope.EMPTY;
