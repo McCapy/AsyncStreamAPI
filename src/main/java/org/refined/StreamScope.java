@@ -11,9 +11,6 @@ import java.util.function.Consumer;
 @SuppressWarnings({"BooleanMethodIsAlwaysInverted", "unused", "ResultOfMethodCallIgnored", "rawtypes", "CallToPrintStackTrace", "unchecked"})
 
 public final class StreamScope {
-    private static final byte UNSTARTED = 2;
-    private static final byte STARTED = 1;
-    private static final byte COMPLETED = 0;
 
     private final AtomicBoolean cancelled = new AtomicBoolean(false);
     private final CountDownLatch latch = new CountDownLatch(2);
@@ -21,6 +18,7 @@ public final class StreamScope {
     public final LinkedHashMap<String,AsynchronousStream<Object>> forkMap = new LinkedHashMap<>(4);
 
     private Thread worker;
+    private ThreadLocal<List<Object>> local;
     private List<Object> current;
     public int taskIndex = 0;
     private String name = "N/A";
@@ -31,26 +29,20 @@ public final class StreamScope {
     }
 
     public boolean isUnstarted() {
-        return latch.getCount() == UNSTARTED;
+        return latch.getCount() == 2;
     }
     public boolean isStarted() {
-        return latch.getCount() <= STARTED;
+        return latch.getCount() <= 1;
     }
     public boolean isCompleted() {
-        return latch.getCount() == COMPLETED;
+        return latch.getCount() == 0;
     }
     public boolean isCancelled() {
         return cancelled.get();
     }
 
-    public List<Object> getItems() {
-        return current;
-    }
     public Thread getWorker() {
         return worker;
-    }
-    public List<TaskNode> getTasks() {
-        return Collections.unmodifiableList(tasks);
     }
     public String getId() {
         return name;
@@ -101,8 +93,8 @@ public final class StreamScope {
     }
     public List<Object> gather() {
         List<Object> result = new ArrayList<>(forkMap.size());
-        for (AsynchronousStream<Object> val : forkMap.values()) {
-            result.addAll(val.toList());
+        for (AsynchronousStream<Object> stream : forkMap.values()) {
+            result.addAll(stream.toList());
         }
         forkMap.clear();
         return result;
@@ -119,21 +111,16 @@ public final class StreamScope {
                 sScope.join();
                 sScope.joinForks(sScope);
             }
-            catch (RuntimeException ignored) {
-            }
+            catch (RuntimeException _) {}
         }
     }
 
-    public void setFactory(ThreadFactory factory) {
-        this.factory = factory;
-    }
-    private ThreadFactory factory = null;
+    private final ThreadFactory factory = Thread.ofVirtual().factory();
     public static final List<Object> EMPTY = new ArrayList<>(1);
 
     public void run() {
         taskIndex = 0;
         latch.countDown();
-        if (factory == null) factory = Thread.ofVirtual().factory();
         worker = factory.newThread(() -> {
             while (taskIndex < tasks.size()) {
                 if (isCancelled()) return;
@@ -155,19 +142,22 @@ public final class StreamScope {
 
     }
 
-    public void addTask(TaskNode... nodes) {
+    public void addTask(TaskNode<?>... nodes) {
         taskIndex += nodes.length;
         tasks.addAll(List.of(nodes));
     }
-    public void addTasks(Collection<TaskNode> nodes) {
+
+    public void addTasks(ArrayList<TaskNode> nodes) {
         taskIndex += nodes.size();
         tasks.addAll(nodes);
     }
-    public void insertTask(TaskNode node, int index) {
+
+    public void insertTask(TaskNode<?> node, int index) {
         taskIndex++;
         tasks.add(index, node);
     }
-    public StreamScope setTask(int index,TaskNode node) {
+
+    public StreamScope setTask(int index,TaskNode<?> node) {
         tasks.set(index,node);
         return this;
     }
@@ -194,8 +184,8 @@ public final class StreamScope {
         scope.onCancel = onCancel;
         scope.onStart = onStart;
         scope.onComplete = onComplete;
-        scope.addTasks(this.getTasks());
-        scope.setName(this.getId());
+        scope.addTasks(tasks);
+        scope.setName(name);
         this.cancel();
         return scope;
     }

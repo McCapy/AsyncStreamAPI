@@ -1,19 +1,19 @@
 import org.refined.AsyncStream;
+
+// double check to make sure loop, flatmap, and forkEach/fork still work correctly (because i think i mugged them up)
+
 @SuppressWarnings({"unused"})
 void main() {
-    List<Integer> holder = IntStream.rangeClosed(1,5_000_000).boxed().toList();
-    List<Long> results = new ArrayList<>(100);
-    for (int i = 0; i < 500; i++) {
-        long ms = System.currentTimeMillis();
-        List<Integer> result =
-            new AsyncStream<>(holder)
-                .map(item -> item * 10)
-                .toList();
-        long current = System.currentTimeMillis();
-        results.add(current - ms);
-    }
-    results.sort(Long::compareTo);
-    for (Long result : results) {
-        System.out.println(result + "ms");
-    }
+    List<Integer> result =
+        new AsyncStream<>(1,2,3,4,5,6,7,8,10)
+            .map(item -> {
+                if (item == 5) throw new RuntimeException("Failed");
+                return item * 2;
+            })
+            .intercept((err,scope) -> {
+                err.printStackTrace();
+                return List.of(1,2,3,4,5);
+            })
+            .toList();
+    System.out.println(result);
 }

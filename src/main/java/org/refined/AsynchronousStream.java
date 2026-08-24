@@ -3,10 +3,7 @@ package org.refined;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.*;
 
@@ -24,7 +21,7 @@ public abstract class AsynchronousStream<T> {
     }
     public AsynchronousStream(T... values) {
         scope = new StreamScope();
-        scope.addTask(new TaskNode.OfferNode<T>(_ -> List.of(values)));
+        scope.addTask(new TaskNode.OfferNode<T>(_ -> Arrays.asList(values)));
     }
     public AsynchronousStream(Collection<T> collection) {
         scope = new StreamScope();
@@ -35,18 +32,18 @@ public abstract class AsynchronousStream<T> {
     // Status Operations
     public AsynchronousStream<T> start() {
         scope.start();
-        return  this;
+        return this;
     }
     public void cancel() {
         scope.cancel();
     }
     public AsynchronousStream<T> reset() {
-        return  repack(scope.reset());
+        return repack(scope.reset());
     }
     public AsynchronousStream<T> named(String id) {
         scope.check();
         scope.setName(id);
-        return  this;
+        return this;
     }
     // Status Operations
 
@@ -57,7 +54,9 @@ public abstract class AsynchronousStream<T> {
     public <R> R toAbstract(long ms,Function<List<T>,R> mapper) {
         return mapper.apply(((List<T>) scope.join(ms)));
     }
-    public T[] toArray() { return (T[]) scope.join().toArray(); }
+    public T[] toArray() {
+        return (T[]) scope.join().toArray();
+    }
     public T[] toArray(long ms) {
         return (T[]) scope.join(ms).toArray();
     }
