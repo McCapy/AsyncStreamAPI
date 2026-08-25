@@ -6,7 +6,6 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.*;
 
 @SuppressWarnings({"unchecked","unused"})
@@ -38,76 +37,6 @@ public final class AsyncStream<T> extends AsynchronousStream<T> {
 
     public static <R> AsyncStream<R> of(R... items) {
         return new AsyncStream<>(items);
-    }
-
-    @Override
-    public AsyncStream<T> start() {
-        return (AsyncStream<T>) super.start();
-    }
-
-    @Override
-    public void cancel() {
-        super.cancel();
-    }
-
-    @Override
-    public AsyncStream<T> reset() {
-        return (AsyncStream<T>) super.reset();
-    }
-
-    @Override
-    public AsyncStream<T> named(String id) {
-        return (AsyncStream<T>) super.named(id);
-    }
-
-    @Override
-    public <R> R toAbstract(Function<List<T>, R> mapper) {
-        return super.toAbstract(mapper);
-    }
-
-    @Override
-    public <R> R toAbstract(long ms, Function<List<T>, R> mapper) {
-        return super.toAbstract(ms, mapper);
-    }
-
-    @Override
-    public T[] toArray() {
-        return super.toArray();
-    }
-
-    @Override
-    public T[] toArray(long ms) {
-        return super.toArray(ms);
-    }
-
-    @Override
-    public List<T> toList() {
-        return super.toList();
-    }
-
-    @Override
-    public List<T> toList(long ms) {
-        return super.toList(ms);
-    }
-
-    @Override
-    public Collection<T> toCollection() {
-        return super.toCollection();
-    }
-
-    @Override
-    public Collection<T> toCollection(long ms) {
-        return super.toCollection(ms);
-    }
-
-    @Override
-    public AsyncStream<T> intercept(BiFunction<RuntimeException, StreamScope, List<T>> fn) {
-        return (AsyncStream<T>) super.intercept(fn);
-    }
-
-    @Override
-    public AsyncStream<T> intercept(BiConsumer<RuntimeException, StreamScope> consumer) {
-        return (AsyncStream<T>) super.intercept(consumer);
     }
 
     @Override
@@ -166,13 +95,8 @@ public final class AsyncStream<T> extends AsynchronousStream<T> {
     }
 
     @Override
-    public <R> AsyncStream<R> parallel(ForkJoinPool pool, Function<T, R> mapper) {
-        return (AsyncStream<R>) super.parallel(pool, mapper);
-    }
-
-    @Override
-    public <R> AsyncStream<R> parallel(int threads, Function<T, R> mapper) {
-        return (AsyncStream<R>) super.parallel(threads, mapper);
+    public <R> AsyncStream<R> parallel(Function<T, R> mapper) {
+        return (AsyncStream<R>) super.parallel(mapper);
     }
 
     @Override
@@ -186,18 +110,13 @@ public final class AsyncStream<T> extends AsynchronousStream<T> {
     }
 
     @Override
-    public <R> AsyncStream<R> loop(int repetitions, Function<List<T>, AsynchronousStream<R>> stream) {
-        return (AsyncStream<R>) super.loop(repetitions, stream);
+    public AsyncStream<T> loop(int repetitions, Function<List<T>, AsynchronousStream<T>> stream) {
+        return (AsyncStream<T>) super.loop(repetitions, stream);
     }
 
     @Override
     public AsyncStream<T> submit(Runnable runnable) {
         return (AsyncStream<T>) super.submit(runnable);
-    }
-
-    @Override
-    public <R> AsyncStream<R> addTask(TaskNode<R> taskNode) {
-        return (AsyncStream<R>) super.addTask(taskNode);
     }
 
     @Override
@@ -261,12 +180,7 @@ public final class AsyncStream<T> extends AsynchronousStream<T> {
     }
 
     @Override
-    public StreamScope scope() {
-        return super.scope();
-    }
-
-    @Override
-    <R> AsyncStream<R> repack(StreamScope scope) {
+    public <R> AsynchronousStream<R> repack(StreamScope scope) {
         return new AsyncStream<>(scope);
     }
 }

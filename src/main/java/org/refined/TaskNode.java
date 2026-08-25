@@ -4,17 +4,22 @@ import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.*;
 
 // prepare your eyes for the bullshit you're about to see
 
 @SuppressWarnings({"unused","unchecked"})
 public abstract class TaskNode<T> {
+
     protected List<Object> params;
     protected TaskNode(Object... items) {
-        this.params = List.of(items);
+        this.params = Arrays.asList(items);
     }
+
+    public int weight() { return 2; }
+    /*
+    Note to addon devs, don't touch this.
+     */
 
     public abstract @NotNull List<T> execute(StreamScope scope,List<Object> items) throws RuntimeException;
 
@@ -24,9 +29,76 @@ public abstract class TaskNode<T> {
     public void handler(BiFunction<RuntimeException, StreamScope, List<?>> function) {
         this.handler = function;
     }
-    protected BiFunction<RuntimeException,StreamScope,List<?>> handler;
+    public BiFunction<RuntimeException,StreamScope,List<?>> handler;
+
+    @SuppressWarnings("InstantiatingAThreadWithDefaultRunMethod")
+    public static class NameNode<T> extends TaskNode<T> {
+
+        public NameNode(String name) {
+            super(name);
+        }
+
+        @Override
+        public int weight() {
+            return 0;
+        }
+
+        @Override
+        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+            try {
+                scope.worker = new Thread((String) params.getFirst());
+                return (List<T>) items;
+            } catch (RuntimeException e) {
+                return (List<T>) StreamScope.EMPTY;
+            }
+        }
+    }
+
+    public static class StartNode<T> extends TaskNode<T> {
+
+        public StartNode(Runnable runnable) {
+            super(runnable);
+        }
+
+        @Override
+        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+            try {
+                ((Runnable) params.getFirst()).run();
+                return (List<T>) items;
+            } catch (RuntimeException e) {
+                return (List<T>) StreamScope.EMPTY;
+            }
+        }
+
+        @Override
+        public int weight() {
+            return 1;
+        }
+    }
+    public static class CompleteNode<T> extends TaskNode<T> {
+
+        public CompleteNode(Consumer<List<T>> consumer) {
+            super(consumer);
+        }
+        public CompleteNode(Runnable runnable) {
+            Consumer<List<T>> consumer = _ -> runnable.run();
+            super(consumer);
+        }
+
+        @Override
+        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+            ((Consumer<List<T>>) params.getFirst()).accept((List<T>) items);
+            return (List<T>) items;
+        }
+
+        @Override
+        public int weight() {
+            return 3;
+        }
+    }
 
     public static class CollectNode<T> extends TaskNode<T> {
+
         public CollectNode(List<String> ids) {
             super(ids);
         }
@@ -77,7 +149,6 @@ public abstract class TaskNode<T> {
                 if (handler() != null) return (List<T>) handler.apply(e,scope);
             }
             return (List<T>) StreamScope.EMPTY;
-
         }
     }
 
@@ -89,12 +160,8 @@ public abstract class TaskNode<T> {
         @Override
         public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
             try {
-                List<T> holder = (List<T>) items;
-                List<T> result = new ArrayList<>(holder.size());
-                for (T current : holder) {
-                    if (!((Predicate<T>) params.getFirst()).test(current)) result.add(current);
-                }
-                return result;
+                Predicate<T> predicate = (Predicate<T>) params.getFirst();
+                return ((List<T>)items).stream().filter(predicate.negate()).toList();
             } catch (RuntimeException e) {
                 if (handler() != null) return (List<T>) handler.apply(e,scope);
                 return (List<T>) StreamScope.EMPTY;
@@ -111,11 +178,8 @@ public abstract class TaskNode<T> {
         @Override
         public @NotNull List<R> execute(StreamScope scope, List<Object> items) throws RuntimeException {
             try {
-                List<R> result = new ArrayList<>();
-                for (T item : (List<T>) items) {
-                    result.addAll(((Function<T,List<R>>)params.getFirst()).apply(item));
-                }
-                return result;
+                final Function<T,List<R>> fn = (Function<T, List<R>>) params.getFirst();
+                return ((List<T>) items).stream().flatMap(val -> fn.apply(val).stream()).toList();
             }
             catch (RuntimeException e) {
                 if (handler != null) return (List<R>) handler.apply(e,scope);
@@ -132,9 +196,7 @@ public abstract class TaskNode<T> {
         @Override
         public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
             try {
-                for (T item : (List<T>) items) {
-                    ((Consumer<T>)params.getFirst()).accept(item);
-                }
+                ((List<T>)items).forEach((Consumer<T>)params.getFirst());
             } catch (RuntimeException e) {
                 if (handler() != null) return (List<T>) handler.apply(e,scope);
             }
@@ -192,26 +254,24 @@ public abstract class TaskNode<T> {
         }
     }
 
-    public static class LoopNode<R,T> extends TaskNode<R> {
+    public static class LoopNode<T> extends TaskNode<T> {
 
-        public LoopNode(int repetitions, Function<List<T>,AsynchronousStream<R>> stream) {
+        public LoopNode(int repetitions, Function<List<T>,AsynchronousStream<T>> stream) {
             super(repetitions,stream);
         }
 
         @Override
-        public @NotNull List<R> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
             try {
-                AsynchronousStream<R> stream = ((Function<List<T>,AsynchronousStream<R>>)params.get(1)).apply(((List<T>) items));
-                List<Object> current = items;
                 int repetitions = (int) params.getFirst();
+                Function<List<T>,AsynchronousStream<T>> constructor = (Function<List<T>, AsynchronousStream<T>>) params.get(1);
                 for (int i = 0; i < repetitions; i++) {
-                    final List<Object> finalCurrent = current;
-                    current = stream.reset().scope().setTask(0,new OfferNode<>(_ -> finalCurrent)).join();
+                    items = (List<Object>) constructor.apply((List<T>) items).toList();
                 }
-                return (List<R>) current;
+                return (List<T>) items;
             } catch (RuntimeException e) {
-                if (handler() != null) return (List<R>) handler.apply(e,scope);
-                return (List<R>) StreamScope.EMPTY;
+                if (handler() != null) return (List<T>) handler.apply(e,scope);
+                return (List<T>) StreamScope.EMPTY;
             }
         }
     }
@@ -225,13 +285,7 @@ public abstract class TaskNode<T> {
         @Override
         public @NotNull List<R> execute(StreamScope scope, List<Object> items) throws RuntimeException {
             try {
-                Function<T,R> fn = (Function<T, R>) params.getFirst();
-                List<R> result = new ArrayList<>(items.size());
-                Iterator<T> iterator = (Iterator<T>) items.iterator();
-                while (iterator.hasNext()) {
-                    result.add(fn.apply(iterator.next()));
-                }
-                return result;
+                return ((List<T>)items).stream().map((Function<T, R>) params.getFirst()).toList();
             } catch (RuntimeException e) {
                 if (handler() != null) return (List<R>) handler.apply(e, scope);
                 return (List<R>) StreamScope.EMPTY;
@@ -258,27 +312,15 @@ public abstract class TaskNode<T> {
 
     public static class ParallelNode<T,R> extends TaskNode<R> {
 
-        public ParallelNode(ForkJoinPool pool, Function<T,R> mapper) {
-            super(mapper,pool,0);
-        }
 
-        public ParallelNode(int threads,Function<T,R> mapper) {
-            super(mapper,null,threads);
+        public ParallelNode(Function<T,R> mapper) {
+            super(mapper);
         }
 
         @Override
         public @NotNull List<R> execute(StreamScope scope, List<Object> items) throws RuntimeException {
             try {
-                PartitionAction<T,R> action = new PartitionAction<>(((List<T>) items).spliterator(), (Function<T,R>)params.getFirst());
-                ForkJoinPool pool = (ForkJoinPool) params.get(1);
-                if (pool == null) {
-                    try (ForkJoinPool otherPool = new ForkJoinPool((int)params.get(2))) {
-                        return otherPool.invoke(action).reversed();
-                    }
-                }
-                else {
-                    return pool.invoke(action).reversed();
-                }
+                return ((List<T>)items).parallelStream().map((Function<T,R>)params.getFirst()).toList();
             }
             catch (RuntimeException e) {
                 if (handler != null) return (List<R>) handler.apply(e,scope);
