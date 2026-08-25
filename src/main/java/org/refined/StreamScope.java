@@ -7,8 +7,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 
-@SuppressWarnings({"BooleanMethodIsAlwaysInverted", "unused", "ResultOfMethodCallIgnored", "rawtypes", "CallToPrintStackTrace", "unchecked", "InstantiatingAThreadWithDefaultRunMethod"})
-
+@SuppressWarnings({"rawtypes", "unchecked"})
 public final class StreamScope {
 
     @Override
@@ -37,11 +36,6 @@ public final class StreamScope {
     private List<Object> current;
     public int taskIndex = 0;
 
-    public Runnable onCancel;
-    void onCancel(Runnable runnable) {
-        onCancel = runnable;
-    }
-
     public boolean isUnstarted() {
         return latch.getCount() == 2;
     }
@@ -57,10 +51,10 @@ public final class StreamScope {
 
     // Operations
     public void start() {
-        if (!isUnstarted()) return;
+        if (isStarted()) return;
         run();
     }
-    public List<Object> join() {
+    List<Object> join() {
         return join(-1L);
     }
     List<Object> join(long ms) {
@@ -71,10 +65,9 @@ public final class StreamScope {
                 latch.await();
             }
             else {
-                latch.await(ms, TimeUnit.MILLISECONDS);
+                if (!latch.await(ms, TimeUnit.MILLISECONDS)) return EMPTY;
             }
         } catch (InterruptedException e) {
-            e.printStackTrace();
             return EMPTY;
         }
         joinForks();
@@ -83,7 +76,6 @@ public final class StreamScope {
     public void cancel() {
         if (isCompleted()) return;
         if (isCancelled()) return;
-        if (onCancel != null) onCancel.run();
         taskIndex = tasks.size();
         cancelled.set(true);
         for (long i = latch.getCount(); i > 0; i--) {
@@ -127,13 +119,13 @@ public final class StreamScope {
         latch.countDown();
         String name = "N/A";
         if (worker != null) name = worker.getName();
+        tasks.sort(Comparator.comparingInt(TaskNode::weight));
         worker = factory.newThread(() -> {
             while (taskIndex < tasks.size()) {
-                if (isCancelled()) return;
+                if (isCancelled()) break;
                 try {
-                    current = tasks.get(taskIndex++).execute(this,current);
+                    current = ((TaskNode<Object>)tasks.get(taskIndex++)).execute(this,current);
                 } catch (RuntimeException e) {
-                    e.printStackTrace();
                     this.cancel();
                     break;
                 }
@@ -157,7 +149,6 @@ public final class StreamScope {
 
     public StreamScope reset() {
         StreamScope scope = new StreamScope();
-        scope.onCancel = onCancel;
         scope.addTasks(tasks);
         scope.worker = new Thread(Optional.ofNullable(worker.getName()).orElse("N/A"));
         this.cancel();

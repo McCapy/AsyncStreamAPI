@@ -6,8 +6,6 @@ import java.time.Duration;
 import java.util.*;
 import java.util.function.*;
 
-// prepare your eyes for the bullshit you're about to see
-
 @SuppressWarnings({"unused","unchecked"})
 public abstract class TaskNode<T> {
 
@@ -45,12 +43,8 @@ public abstract class TaskNode<T> {
 
         @Override
         public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
-            try {
-                scope.worker = new Thread((String) params.getFirst());
-                return (List<T>) items;
-            } catch (RuntimeException e) {
-                return (List<T>) StreamScope.EMPTY;
-            }
+            scope.worker = new Thread((String) params.getFirst());
+            return (List<T>) StreamScope.EMPTY;
         }
     }
 
@@ -62,12 +56,8 @@ public abstract class TaskNode<T> {
 
         @Override
         public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
-            try {
-                ((Runnable) params.getFirst()).run();
-                return (List<T>) items;
-            } catch (RuntimeException e) {
-                return (List<T>) StreamScope.EMPTY;
-            }
+            ((Runnable)params.getFirst()).run();
+            return (List<T>) StreamScope.EMPTY;
         }
 
         @Override
@@ -88,7 +78,7 @@ public abstract class TaskNode<T> {
         @Override
         public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
             ((Consumer<List<T>>) params.getFirst()).accept((List<T>) items);
-            return (List<T>) items;
+            return (List<T>) (items.isEmpty() ? StreamScope.EMPTY : items);
         }
 
         @Override

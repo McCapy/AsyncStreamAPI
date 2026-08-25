@@ -1,8 +1,13 @@
 import org.refined.AsyncStream;
-import org.refined.AsynchronousStream;
 
 @SuppressWarnings({"unused"})
 void main() {
-    AsynchronousStream<Integer> stream =
-            new AsyncStream<>(1,2,3);
+    List<Integer> stream =
+        new AsyncStream<>(1,2,3)
+            .named("example thread name")
+            .map(item -> item * 10)
+            .onComplete(() -> System.out.println("Completed"))
+            .onStart(() -> System.out.println("Started"))
+            .toList();
+    System.out.println(stream);
 }

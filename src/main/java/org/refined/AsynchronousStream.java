@@ -75,7 +75,7 @@ public abstract class AsynchronousStream<T> {
     }
     public final AsynchronousStream<T> named(String id) {
         scope.check();
-        scope.setName(id);
+        scope.addTask(new TaskNode.NameNode<T>(id));
         return this;
     }
     // Status Operations
@@ -156,7 +156,7 @@ public abstract class AsynchronousStream<T> {
         scope.addTask(new TaskNode.OfferNode<>((set) -> List.of(items)));
         return  this.repack(scope);
     }
-    public <R> AsynchronousStream<R>offer(Collection<R> items) {
+    public <R> AsynchronousStream<R> offer(Collection<R> items) {
         scope.check();
         scope.addTask(new TaskNode.OfferNode<>((set) -> new ArrayList<>(items)));
         return  this.repack(scope);
@@ -207,7 +207,7 @@ public abstract class AsynchronousStream<T> {
     public AsynchronousStream<Void> forEach(Consumer<T> consumer) {
         scope.check();
         scope.addTask(new TaskNode.ForEachNode<>(consumer));
-        return  this.repack(scope);
+        return this.repack(scope);
     }
     public AsynchronousStream<T> peek(Consumer<T> consumer) {
         scope.check();
@@ -224,17 +224,22 @@ public abstract class AsynchronousStream<T> {
     // Miscellaneous
     public AsynchronousStream<T> submit(Runnable runnable) {
         scope.check();
-        scope.addTask(new TaskNode.SubmitNode<>(runnable));
+        scope.addTask(new TaskNode.SubmitNode<T>(runnable));
         return this;
     }
     public AsynchronousStream<T> delay(Duration duration) {
         scope.check();
-        scope.addTask(new TaskNode.DelayNode<>(duration));
+        scope.addTask(new TaskNode.DelayNode<T>(duration));
         return this;
     }
     public AsynchronousStream<T> reversed() {
         scope.check();
-        scope.addTask(new TaskNode.ReverseNode<>());
+        scope.addTask(new TaskNode.ReverseNode<T>());
+        return this;
+    }
+    public AsynchronousStream<T> self(BiConsumer<StreamScope,AsynchronousStream<T>> consumer) {
+        scope.check();
+        // fix this;
         return this;
     }
     // Miscellaneous
@@ -255,22 +260,21 @@ public abstract class AsynchronousStream<T> {
     // Event Operations
     public AsynchronousStream<T> onComplete(Consumer<List<T>> consumer) {
         scope.check();
-        scope.onComplete((Consumer<List<Object>>) (Object) consumer);
+        scope.addTask(new TaskNode.CompleteNode<>(consumer));
         return this;
     }
     public AsynchronousStream<T> onStart(Runnable runnable) {
         scope.check();
-        scope.onStart(runnable);
+        scope.addTask(new TaskNode.StartNode<T>(runnable));
         return this;
     }
     public AsynchronousStream<T> onCancel(Runnable runnable) {
         scope.check();
-        scope.onCancel(runnable);
         return this;
     }
     public AsynchronousStream<T> onComplete(Runnable runnable) {
         scope.check();
-        scope.onComplete(runnable);
+        scope.addTask(new TaskNode.CompleteNode<T>(runnable));
         return this;
     }
     // Event Operations
@@ -294,7 +298,7 @@ public abstract class AsynchronousStream<T> {
         scope.addTask(new TaskNode.GatherNode<R>());
         return this.repack(scope);
     }
-    abstract <R> AsynchronousStream<R> repack(StreamScope scope);
+
     /*
        This is the default implementation of repacking,
        it just acts as a cast, by which we change the
@@ -311,6 +315,9 @@ public abstract class AsynchronousStream<T> {
        > }
        > ```
      */
+
+    abstract <R> AsynchronousStream<R> repack(StreamScope scope);
+
     public final StreamScope scope() {
         return this.scope;
     }
