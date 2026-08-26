@@ -1,6 +1,7 @@
 package org.refined;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.UnknownNullability;
 
 import java.time.Duration;
 import java.util.*;
@@ -15,16 +16,13 @@ public abstract class TaskNode<T> {
     }
 
     public int weight() { return 2; }
-    /*
-    Note to addon devs, don't touch this.
-     */
 
-    public abstract @NotNull List<T> execute(StreamScope scope,List<Object> items) throws RuntimeException;
+    public abstract @NotNull List<T> execute(@NotNull StreamScope scope,@UnknownNullability List<Object> items) throws RuntimeException;
 
-    public BiFunction<RuntimeException,StreamScope,List<?>> handler() {
+    public final BiFunction<RuntimeException,StreamScope,List<?>> handler() {
         return handler;
     }
-    public void handler(BiFunction<RuntimeException, StreamScope, List<?>> function) {
+    public final void handler(BiFunction<RuntimeException, StreamScope, List<?>> function) {
         this.handler = function;
     }
     public BiFunction<RuntimeException,StreamScope,List<?>> handler;
@@ -42,7 +40,7 @@ public abstract class TaskNode<T> {
         }
 
         @Override
-        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             scope.worker = new Thread((String) params.getFirst());
             return (List<T>) StreamScope.EMPTY;
         }
@@ -55,7 +53,7 @@ public abstract class TaskNode<T> {
         }
 
         @Override
-        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             ((Runnable)params.getFirst()).run();
             return (List<T>) StreamScope.EMPTY;
         }
@@ -76,7 +74,7 @@ public abstract class TaskNode<T> {
         }
 
         @Override
-        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             ((Consumer<List<T>>) params.getFirst()).accept((List<T>) items);
             return (List<T>) (items.isEmpty() ? StreamScope.EMPTY : items);
         }
@@ -94,7 +92,7 @@ public abstract class TaskNode<T> {
         }
 
         @Override
-        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             try {
                 return (List<T>) scope.collect((List<String>) params.getFirst());
             } catch (RuntimeException e) {
@@ -110,7 +108,7 @@ public abstract class TaskNode<T> {
         }
 
         @Override
-        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             try {
                 Thread.sleep((Duration) params.getFirst());
             } catch (InterruptedException e) {
@@ -131,7 +129,7 @@ public abstract class TaskNode<T> {
         }
 
         @Override
-        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             try {
                 ((Consumer<List<T>>) params.getFirst()).accept((List<T>) items);
             }
@@ -148,7 +146,7 @@ public abstract class TaskNode<T> {
         }
 
         @Override
-        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             try {
                 Predicate<T> predicate = (Predicate<T>) params.getFirst();
                 return ((List<T>)items).stream().filter(predicate.negate()).toList();
@@ -166,7 +164,7 @@ public abstract class TaskNode<T> {
         }
 
         @Override
-        public @NotNull List<R> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<R> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             try {
                 final Function<T,List<R>> fn = (Function<T, List<R>>) params.getFirst();
                 return ((List<T>) items).stream().flatMap(val -> fn.apply(val).stream()).toList();
@@ -184,7 +182,7 @@ public abstract class TaskNode<T> {
         }
 
         @Override
-        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             try {
                 ((List<T>)items).forEach((Consumer<T>)params.getFirst());
             } catch (RuntimeException e) {
@@ -201,7 +199,7 @@ public abstract class TaskNode<T> {
         }
 
         @Override
-        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             try {
                 List<T> scopeItems = (List<T>) items;
                 for (int i = 0, scopeItemsSize = scopeItems.size(); i < scopeItemsSize; i++) {
@@ -221,7 +219,7 @@ public abstract class TaskNode<T> {
         }
 
         @Override
-        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             try {
                 scope.forkMap.put((String) params.getFirst(), (AsynchronousStream<Object>) ((Function<List<A>,AsynchronousStream<?>>)params.get(1)).apply((List<A>) items).start());
             } catch (RuntimeException e) {
@@ -234,7 +232,7 @@ public abstract class TaskNode<T> {
     public static class GatherNode<T> extends TaskNode<T> {
 
         @Override
-        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             try {
                 return (List<T>) scope.gather();
             } catch (RuntimeException e) {
@@ -251,7 +249,7 @@ public abstract class TaskNode<T> {
         }
 
         @Override
-        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             try {
                 int repetitions = (int) params.getFirst();
                 Function<List<T>,AsynchronousStream<T>> constructor = (Function<List<T>, AsynchronousStream<T>>) params.get(1);
@@ -273,7 +271,7 @@ public abstract class TaskNode<T> {
         }
 
         @Override
-        public @NotNull List<R> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<R> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             try {
                 return ((List<T>)items).stream().map((Function<T, R>) params.getFirst()).toList();
             } catch (RuntimeException e) {
@@ -290,7 +288,7 @@ public abstract class TaskNode<T> {
         }
 
         @Override
-        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             try {
                 return ((Function<List<T>,List<T>>) params.getFirst()).apply((List<T>) items);
             } catch (RuntimeException e) {
@@ -308,7 +306,7 @@ public abstract class TaskNode<T> {
         }
 
         @Override
-        public @NotNull List<R> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<R> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             try {
                 return ((List<T>)items).parallelStream().map((Function<T,R>)params.getFirst()).toList();
             }
@@ -326,7 +324,7 @@ public abstract class TaskNode<T> {
         }
 
         @Override
-        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             try {
                 Consumer<T> consumer = (Consumer<T>) params.getFirst();
                 for (T item : (List<T>) items) {
@@ -348,7 +346,7 @@ public abstract class TaskNode<T> {
         }
 
         @Override
-        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             try {
                 T holder = ((Supplier<T>) params.get(1)).get();
                 Predicate<T> predicate = (Predicate<T>) params.getFirst();
@@ -367,7 +365,7 @@ public abstract class TaskNode<T> {
     public static class ReverseNode<T> extends TaskNode<T> {
 
         @Override
-        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             try {
                 return (List<T>) items.reversed();
             } catch (RuntimeException e) {
@@ -384,7 +382,7 @@ public abstract class TaskNode<T> {
         }
 
         @Override
-        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             try {
                 T[] res = (T[]) items.toArray();
                 if ((boolean)params.getFirst()) Arrays.parallelSort(res, (Comparator<T>)params.get(1));
@@ -402,7 +400,7 @@ public abstract class TaskNode<T> {
             super(runnable);
         }
 
-        public @NotNull List<T> execute(StreamScope scope, List<Object> items) throws RuntimeException {
+        public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<Object> items) throws RuntimeException {
             try {
                 ((Runnable)params.getFirst()).run();
                 return (List<T>) items;

@@ -2,30 +2,12 @@ package org.refined;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public final class StreamScope {
-
-    @Override
-    public String toString() {
-        return
-           """
-           \nStreamScope information:
-           Cancelled: %s
-           Started: %s
-           Unstarted: %s
-           Completed: %s
-           Forks: %s
-           Tasks: %s
-           ThreadWorker: %s
-           TaskIndex: %s
-           Name: %s
-           """.formatted(cancelled.get(),isStarted(),isUnstarted(),isCompleted(),forkMap.values(),tasks,worker,taskIndex, Optional.ofNullable(worker.getName()).orElse("N/A"));
-    }
 
     private final AtomicBoolean cancelled = new AtomicBoolean(false);
     private final CountDownLatch latch = new CountDownLatch(2);
@@ -111,7 +93,6 @@ public final class StreamScope {
         }
     }
 
-    private static final ThreadFactory factory = Thread.ofVirtual().factory();
     public static final List<Object> EMPTY = new ArrayList<>(1);
 
     public void run() {
@@ -120,7 +101,7 @@ public final class StreamScope {
         String name = "N/A";
         if (worker != null) name = worker.getName();
         tasks.sort(Comparator.comparingInt(TaskNode::weight));
-        worker = factory.newThread(() -> {
+        worker = Thread.ofVirtual().factory().newThread(() -> {
             while (taskIndex < tasks.size()) {
                 if (isCancelled()) break;
                 try {
