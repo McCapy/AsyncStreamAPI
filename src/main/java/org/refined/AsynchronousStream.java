@@ -39,24 +39,19 @@ public abstract class AsynchronousStream<T> {
 
     protected @NotNull StreamScope scope;
 
-    @Override
-    public String toString() {
-        return "AsynchronousStream<T> : " + scope;
-    }
-
     // Constructors and Factory-Constructors
-    protected AsynchronousStream() {
+    public AsynchronousStream() {
         scope = new StreamScope();
         scope.addTask(new TaskNode.OfferNode<Void>(items -> null));
     }
-    protected AsynchronousStream(@NotNull StreamScope scope) {
+    public AsynchronousStream(@NotNull StreamScope scope) {
         this.scope = scope;
     }
-    protected AsynchronousStream(T... values) {
+    public AsynchronousStream(T... values) {
         scope = new StreamScope();
         scope.addTask(new TaskNode.OfferNode<T>(_ -> Arrays.asList(values)));
     }
-    protected AsynchronousStream(Collection<T> collection) {
+    public AsynchronousStream(Collection<T> collection) {
         scope = new StreamScope();
         scope.addTask(new TaskNode.OfferNode<T>(item -> new ArrayList<>(collection)));
     }
@@ -69,9 +64,6 @@ public abstract class AsynchronousStream<T> {
     }
     public final void cancel() {
         scope.cancel();
-    }
-    public final AsynchronousStream<T> reset() {
-        return repack(scope.reset());
     }
     public final AsynchronousStream<T> named(String id) {
         scope.check();
@@ -115,10 +107,7 @@ public abstract class AsynchronousStream<T> {
             try {
                 return fn.apply(err, sc);
             } catch (RuntimeException e) {
-                RuntimeException real = new RuntimeException(INTERCEPTION_ERROR.getMessage().formatted(e.getMessage()));
-                real.setStackTrace(e.getStackTrace());
-                sc.cancel();
-                throw real;
+                throw INTERCEPTION_ERROR;
             }
         });
         return this;
@@ -130,10 +119,7 @@ public abstract class AsynchronousStream<T> {
                 consumer.accept(err, sc);
                 return StreamScope.EMPTY;
             } catch (RuntimeException e) {
-                RuntimeException real = new RuntimeException(INTERCEPTION_ERROR.getMessage().formatted(e.getMessage()));
-                real.setStackTrace(e.getStackTrace());
-                sc.cancel();
-                throw real;
+                throw INTERCEPTION_ERROR;
             }
         });
         return this;
@@ -235,11 +221,6 @@ public abstract class AsynchronousStream<T> {
     public AsynchronousStream<T> reversed() {
         scope.check();
         scope.addTask(new TaskNode.ReverseNode<T>());
-        return this;
-    }
-    public AsynchronousStream<T> self(BiConsumer<StreamScope,AsynchronousStream<T>> consumer) {
-        scope.check();
-        // fix this;
         return this;
     }
     // Miscellaneous

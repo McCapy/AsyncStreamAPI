@@ -9,6 +9,11 @@ import java.util.function.BiFunction;
 @SuppressWarnings({"rawtypes", "unchecked"})
 public final class StreamScope {
 
+    public void addTask(TaskNode<?>... nodes) {
+        taskIndex += nodes.length;
+        tasks.addAll(List.of(nodes));
+    }
+
     private final AtomicBoolean cancelled = new AtomicBoolean(false);
     private final CountDownLatch latch = new CountDownLatch(2);
     private final ArrayList<TaskNode> tasks = new ArrayList<>(2);
@@ -16,7 +21,7 @@ public final class StreamScope {
 
     public Thread worker;
     private List<Object> current;
-    public int taskIndex = 0;
+    private int taskIndex = 0;
 
     public boolean isUnstarted() {
         return latch.getCount() == 2;
@@ -64,43 +69,16 @@ public final class StreamScope {
             latch.countDown();
         }
     }
-    public List<Object> collect(List<String> ids) {
-        return ids.parallelStream()
-            .flatMap(id -> forkMap.remove(id).toList().stream())
-            .toList();
-    }
-    public List<Object> gather() {
-        List<Object> result =
-            new ArrayList<>(forkMap.values()).parallelStream()
-                .flatMap(stream -> stream.toList().stream())
-                .toList();
-        forkMap.clear();
-        return result;
-    }
     // Operations
 
-    public void joinForks() {
-        joinForks(this);
-    }
-    private void joinForks(StreamScope scope) {
-        for (AsynchronousStream<Object> stream : scope.forkMap.values()) {
-            try {
-                StreamScope sScope = stream.scope;
-                sScope.join();
-                sScope.joinForks(sScope);
-            }
-            catch (RuntimeException _) {}
-        }
-    }
-
     public static final List<Object> EMPTY = new ArrayList<>(1);
-
+    private static final Comparator<TaskNode> COMPARATOR = Comparator.comparingInt(TaskNode::weight);
     public void run() {
         taskIndex = 0;
         latch.countDown();
         String name = "N/A";
         if (worker != null) name = worker.getName();
-        tasks.sort(Comparator.comparingInt(TaskNode::weight));
+        tasks.sort(COMPARATOR);
         worker = Thread.ofVirtual().factory().newThread(() -> {
             while (taskIndex < tasks.size()) {
                 if (isCancelled()) break;
@@ -118,29 +96,27 @@ public final class StreamScope {
 
     }
 
-    public void addTask(TaskNode<?>... nodes) {
-        taskIndex += nodes.length;
-        tasks.addAll(List.of(nodes));
-    }
-
-    public void addTasks(ArrayList<TaskNode> nodes) {
-        taskIndex += nodes.size();
-        tasks.addAll(nodes);
-    }
-
-    public StreamScope reset() {
-        StreamScope scope = new StreamScope();
-        scope.addTasks(tasks);
-        scope.worker = new Thread(Optional.ofNullable(worker.getName()).orElse("N/A"));
-        this.cancel();
-        return scope;
-    }
-
     private static final RuntimeException ERROR = new RuntimeException("Operations cannot be added post-start, unless enacted by a TaskNode.");
-    public <T> void injectErrorHandling(BiFunction<RuntimeException, StreamScope, List<?>> function) {
+    public <T> void injectErrorHandling(BiFunction<RuntimeException, StreamScope, List<T>> function) {
         ((TaskNode<T>) tasks.get(taskIndex - 1)).handler(function);
     }
+
     void check() throws RuntimeException {
         if (!this.isUnstarted()) throw ERROR;
     }
+
+    public void joinForks() {
+        joinForks(this);
+    }
+    private void joinForks(StreamScope scope) {
+        for (AsynchronousStream<Object> stream : scope.forkMap.values()) {
+            try {
+                StreamScope sScope = stream.scope;
+                sScope.join();
+                sScope.joinForks(sScope);
+            }
+            catch (RuntimeException _) {}
+        }
+    }
+
 }
