@@ -58,14 +58,14 @@ public abstract class AsynchronousStream<T> {
     // Constructors and Factory-Constructors
 
     // Status Operations
-    public final AsynchronousStream<T> start() {
+    public final AsynchronousStream<T> start() throws RuntimeException {
         scope.start();
         return this;
     }
-    public final void cancel() {
+    public final void cancel() throws RuntimeException {
         scope.cancel();
     }
-    public final AsynchronousStream<T> named(String id) {
+    public final AsynchronousStream<T> named(String id) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.NameNode<T>(id));
         return this;
@@ -73,116 +73,107 @@ public abstract class AsynchronousStream<T> {
     // Status Operations
 
     // Collection Operations
-    public final <R> R toAbstract(Function<List<T>,R> mapper) {
+    public final <R> R toAbstract(Function<List<T>,R> mapper) throws RuntimeException {
         return mapper.apply(((List<T>) scope.join()));
     }
-    public final <R> R toAbstract(long ms,Function<List<T>,R> mapper) {
+    public final <R> R toAbstract(long ms,Function<List<T>,R> mapper) throws RuntimeException {
         return mapper.apply(((List<T>) scope.join(ms)));
     }
-    public final T[] toArray() {
+    public final T[] toArray() throws RuntimeException {
         return (T[]) scope.join().toArray();
     }
-    public final T[] toArray(long ms) {
+    public final T[] toArray(long ms) throws RuntimeException {
         return (T[]) scope.join(ms).toArray();
     }
-    public final List<T> toList() {
+    public final List<T> toList() throws RuntimeException {
         return (List<T>) scope.join();
     }
-    public final List<T> toList(long ms) {
+    public final List<T> toList(long ms) throws RuntimeException {
         return (List<T>) scope.join(ms);
     }
-    public final Collection<T> toCollection() {
+    public final Collection<T> toCollection() throws RuntimeException {
         return (Collection<T>) scope.join();
     }
-    public final Collection<T> toCollection(long ms) {
+    public final Collection<T> toCollection(long ms) throws RuntimeException {
         return (Collection<T>) scope.join(ms);
     }
     // Collection Operations
 
     // Error Handling
-    static final RuntimeException INTERCEPTION_ERROR = new RuntimeException("Failed to intercept error--cancelled and diminished result. Solve the error.\n %s");
-    public final AsynchronousStream<T> intercept(BiFunction<RuntimeException,StreamScope,List<T>> fn) {
+    public AsynchronousStream<T> test(Function<List<T>,AsynchronousStream<T>> fn) throws RuntimeException {
         scope.check();
-        scope.injectErrorHandling((err,sc) -> {
-            try {
-                return fn.apply(err, sc);
-            } catch (RuntimeException e) {
-                throw INTERCEPTION_ERROR;
-            }
-        });
+        scope.addTask(new TaskNode.TestNode<>(fn));
         return this;
     }
-    public final AsynchronousStream<T> intercept(BiConsumer<RuntimeException,StreamScope> consumer) {
+    public AsynchronousStream<T> fail(Function<RuntimeException,List<T>> fn) throws RuntimeException {
         scope.check();
-        scope.injectErrorHandling((err,sc) -> {
-            try {
-                consumer.accept(err, sc);
-                return StreamScope.EMPTY;
-            } catch (RuntimeException e) {
-                throw INTERCEPTION_ERROR;
-            }
-        });
+        scope.addTask(new TaskNode.FailNode<>(fn));
+        return this;
+    }
+    public AsynchronousStream<T> fail(Consumer<RuntimeException> consumer) throws RuntimeException {
+        scope.check();
+        scope.addTask(new TaskNode.FailNode<>(consumer));
         return this;
     }
     // Error Handling
 
     // Transformative Operations
-    public AsynchronousStream<T> filter(Predicate<T> predicate) {
+    public AsynchronousStream<T> filter(Predicate<T> predicate) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.FilterNode<>(predicate));
         return this;
     }
-    public <R> AsynchronousStream<R> map(Function<T,R> function) {
+    public <R> AsynchronousStream<R> map(Function<T,R> function) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.MapNode<>(function));
         return  this.repack(scope);
     }
-    public <R> AsynchronousStream<R> offer(R... items) {
+    public <R> AsynchronousStream<R> offer(R... items) throws RuntimeException {
         scope.check();
-        scope.addTask(new TaskNode.OfferNode<>((set) -> List.of(items)));
+        scope.addTask(new TaskNode.OfferNode<>((set) -> Arrays.asList(items)));
         return  this.repack(scope);
     }
-    public <R> AsynchronousStream<R> offer(Collection<R> items) {
+    public <R> AsynchronousStream<R> offer(Collection<R> items) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.OfferNode<>((set) -> new ArrayList<>(items)));
         return  this.repack(scope);
     }
-    public AsynchronousStream<T> offer(Function<List<T>,List<T>> function) {
+    public AsynchronousStream<T> offer(Function<List<T>,List<T>> function) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.OfferNode<>(function));
         return this;
     }
-    public AsynchronousStream<Void> empty(Runnable runnable) {
+    public AsynchronousStream<Void> empty(Runnable runnable) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.EmptyNode<>(runnable));
         return  this.repack(scope);
     }
-    public AsynchronousStream<Void> empty() {
+    public AsynchronousStream<Void> empty() throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.EmptyNode<>(() -> {}));
         return  this.repack(scope);
     }
-    public AsynchronousStream<Void> empty(Consumer<List<T>> consumer) {
+    public AsynchronousStream<Void> empty(Consumer<List<T>> consumer) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.EmptyNode<>(consumer));
         return  this.repack(scope);
     }
-    public <R> AsynchronousStream<R> flatMap(Function<T, List<R>> function) {
+    public <R> AsynchronousStream<R> flatMap(Function<T, List<R>> function) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.FlatMapNode<>(function));
         return  this.repack(scope);
     }
-    public AsynchronousStream<T> parallelSort(Comparator<T> comparator) {
+    public AsynchronousStream<T> parallelSort(Comparator<T> comparator) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.SortNode<>(comparator,true));
         return this;
     }
-    public AsynchronousStream<T> sort(Comparator<T> comparator) {
+    public AsynchronousStream<T> sort(Comparator<T> comparator) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.SortNode<>(comparator,false));
         return this;
     }
-    public <R> AsynchronousStream<R> parallel(Function<T,R> mapper) {
+    public <R> AsynchronousStream<R> parallel(Function<T,R> mapper) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.ParallelNode<>(mapper));
         return this.repack(scope);
@@ -190,17 +181,17 @@ public abstract class AsynchronousStream<T> {
     // Transformative Operations
 
     // Iteration and Loops
-    public AsynchronousStream<Void> forEach(Consumer<T> consumer) {
+    public AsynchronousStream<Void> forEach(Consumer<T> consumer) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.ForEachNode<>(consumer));
         return this.repack(scope);
     }
-    public AsynchronousStream<T> peek(Consumer<T> consumer) {
+    public AsynchronousStream<T> peek(Consumer<T> consumer) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.PeekNode<>(consumer));
         return this;
     }
-    public AsynchronousStream<T> loop(int repetitions,Function<List<T>,AsynchronousStream<T>> stream) {
+    public AsynchronousStream<T> loop(int repetitions,Function<List<T>,AsynchronousStream<T>> stream) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.LoopNode<>(repetitions, stream));
         return this.repack(scope);
@@ -208,17 +199,17 @@ public abstract class AsynchronousStream<T> {
     // Iteration and Loops
 
     // Miscellaneous
-    public AsynchronousStream<T> submit(Runnable runnable) {
+    public AsynchronousStream<T> submit(Runnable runnable) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.SubmitNode<T>(runnable));
         return this;
     }
-    public AsynchronousStream<T> delay(Duration duration) {
+    public AsynchronousStream<T> delay(Duration duration) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.DelayNode<T>(duration));
         return this;
     }
-    public AsynchronousStream<T> reversed() {
+    public AsynchronousStream<T> reversed() throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.ReverseNode<T>());
         return this;
@@ -226,12 +217,12 @@ public abstract class AsynchronousStream<T> {
     // Miscellaneous
 
     // Conditionals
-    public AsynchronousStream<T> replace(Predicate<T> predicate, T replacement) {
+    public AsynchronousStream<T> replace(Predicate<T> predicate, T replacement) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.ReplaceNode<>(predicate,() -> replacement));
         return this;
     }
-    public AsynchronousStream<T> replace(Predicate<T> predicate, Supplier<T> replacement) {
+    public AsynchronousStream<T> replace(Predicate<T> predicate, Supplier<T> replacement) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.ReplaceNode<>(predicate,replacement));
         return this;
@@ -239,21 +230,21 @@ public abstract class AsynchronousStream<T> {
     // Conditionals
 
     // Event Operations
-    public AsynchronousStream<T> onComplete(Consumer<List<T>> consumer) {
+    public AsynchronousStream<T> onComplete(Consumer<List<T>> consumer) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.CompleteNode<>(consumer));
         return this;
     }
-    public AsynchronousStream<T> onStart(Runnable runnable) {
+    public AsynchronousStream<T> onStart(Runnable runnable) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.StartNode<T>(runnable));
         return this;
     }
-    public AsynchronousStream<T> onCancel(Runnable runnable) {
+    public AsynchronousStream<T> onCancel(Runnable runnable) throws RuntimeException {
         scope.check();
         return this;
     }
-    public AsynchronousStream<T> onComplete(Runnable runnable) {
+    public AsynchronousStream<T> onComplete(Runnable runnable) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.CompleteNode<T>(runnable));
         return this;
@@ -261,21 +252,21 @@ public abstract class AsynchronousStream<T> {
     // Event Operations
 
     // Fork operations
-    public <R> AsynchronousStream<Void> fork(String id, Function<List<T>,AsynchronousStream<?>> function) {
+    public <R> AsynchronousStream<Void> fork(String id, Function<List<T>,AsynchronousStream<?>> function) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.ForkNode<R,T>(id, function));
         return this.repack(scope);
     }
-    public <R> AsynchronousStream<Void> forkEach(Function<T,AsynchronousStream<?>> function) {
+    public <R> AsynchronousStream<Void> forkEach(Function<T,AsynchronousStream<?>> function) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.ForkEachNode<Void,T>(function));
         return this.repack(scope);
     }
-    public <R> AsynchronousStream<R> collect(Class<R> clazz,List<String> ids) {
+    public <R> AsynchronousStream<R> collect(Class<R> clazz,List<String> ids) throws RuntimeException {
         scope.addTask(new TaskNode.CollectNode<R>(ids));
         return this.repack(scope);
     }
-    public <R> AsynchronousStream<R> gather(Class<R> clazz) {
+    public <R> AsynchronousStream<R> gather(Class<R> clazz) throws RuntimeException {
         scope.addTask(new TaskNode.GatherNode<R>());
         return this.repack(scope);
     }
@@ -299,8 +290,12 @@ public abstract class AsynchronousStream<T> {
 
     abstract <R> AsynchronousStream<R> repack(StreamScope scope);
 
-    public final StreamScope scope() {
-        return this.scope;
-    }
     // Fork Operations
+
+    /*
+    AsyncStream<Integer> stream =
+        new AsyncStream<>(1,2,3,4,5)
+            .try
+            .map(item -> item * 5)
+     */
 }

@@ -40,6 +40,21 @@ public final class AsyncStream<T> extends AsynchronousStream<T> {
     }
 
     @Override
+    public AsyncStream<T> test(Function<List<T>, AsynchronousStream<T>> fn) {
+        return (AsyncStream<T>) super.test(fn);
+    }
+
+    @Override
+    public AsyncStream<T> fail(Function<RuntimeException, List<T>> fn) {
+        return (AsyncStream<T>) super.fail(fn);
+    }
+
+    @Override
+    public AsyncStream<T> fail(Consumer<RuntimeException> consumer) {
+        return (AsyncStream<T>) super.fail(consumer);
+    }
+
+    @Override
     public AsyncStream<T> filter(Predicate<T> predicate) {
         return (AsyncStream<T>) super.filter(predicate);
     }
