@@ -1,6 +1,5 @@
 package org.refined;
 
-import org.jetbrains.annotations.Async;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
@@ -39,6 +38,21 @@ import java.util.function.*;
 public abstract class AsynchronousStream<T> {
 
     protected @NotNull StreamScope scope;
+
+    // Status Checkers
+    public final boolean isUnstarted() {
+        return scope.isUnstarted();
+    }
+    public final boolean isStarted() {
+        return scope.isStarted();
+    }
+    public final boolean isCancelled() {
+        return scope.isCancelled();
+    }
+    public final boolean isCompleted() {
+        return scope.isCompleted();
+    }
+    // Status Checkers
 
     // Constructors and Factory-Constructors
     public AsynchronousStream() {
@@ -124,11 +138,6 @@ public abstract class AsynchronousStream<T> {
     // Error Handling
 
     // Transformative Operations
-    public AsynchronousStream<T> filter(Predicate<T> predicate) throws RuntimeException {
-        scope.check();
-        scope.addTask(new TaskNode.FilterNode<>(predicate));
-        return this;
-    }
     public <R> AsynchronousStream<R> map(Function<T,R> function) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.MapNode<>(function));
@@ -223,6 +232,11 @@ public abstract class AsynchronousStream<T> {
     // Miscellaneous
 
     // Conditionals
+    public AsynchronousStream<T> filter(Predicate<T> predicate) throws RuntimeException {
+        scope.check();
+        scope.addTask(new TaskNode.FilterNode<>(predicate));
+        return this;
+    }
     public AsynchronousStream<T> replace(Predicate<T> predicate, T replacement) throws RuntimeException {
         scope.check();
         scope.addTask(new TaskNode.ReplaceNode<>(predicate,() -> replacement));
@@ -276,6 +290,7 @@ public abstract class AsynchronousStream<T> {
         scope.addTask(new TaskNode.GatherNode<R>());
         return this.repack(scope);
     }
+    // Fork Operations
 
     /*
        This is the default implementation of repacking,
@@ -295,9 +310,6 @@ public abstract class AsynchronousStream<T> {
      */
 
     abstract <R> AsynchronousStream<R> repack(StreamScope scope);
-
-    // Fork Operations
-
     /*
     AsyncStream<Integer> stream =
         new AsyncStream<>(1,2,3,4,5)

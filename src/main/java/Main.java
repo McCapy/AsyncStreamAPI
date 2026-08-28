@@ -2,18 +2,22 @@ import org.refined.AsyncStream;
 
 @SuppressWarnings({"unused"})
 void main() {
-    List<Integer> result =
+    Optional<Integer[]> result =
         new AsyncStream<>(1,2,3,4,5)
-            .guard()
-            .map(item -> {
-                if (item == 3) throw new RuntimeException("FAILED!");
-                return item * 2;
+            .submit(() -> {
+                throw new RuntimeException("Dun Dun Dun");
             })
-            .submit(() -> System.out.println("Completed."))
+            .guard(self -> self
+                .map(item -> {
+                    if (item == 3) throw new RuntimeException("FAILED!");
+                    return item * 2;
+                })
+                .filter(item -> item % 2 == 0)
+            )
             .yield(err -> {
                 err.printStackTrace();
                 return Arrays.asList(5,4,3,2,1);
             })
-            .toList();
+            .toAbstract(item -> Optional.ofNullable(item.toArray(Integer[]::new)));
     System.out.println(result);
 }

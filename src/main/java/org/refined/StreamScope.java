@@ -86,7 +86,7 @@ public final class StreamScope {
         worker = Thread.ofVirtual().factory().newThread(() -> {
             if (current == null) current = EMPTY;
             boolean catching = false;
-            RuntimeException exception = new RuntimeException(" [ROOT]");
+            RuntimeException exception = new RuntimeException(" [ROOT] ");
             while (taskIndex < tasks.size()) {
                 if (isCancelled()) break;
                 switch (tasks.get(taskIndex++)) {
@@ -97,7 +97,7 @@ public final class StreamScope {
                     case TaskNode.YieldNode node -> {
                         catching = false;
                         node.params.add(exception);
-                        exception = new RuntimeException(" [ROOT]");
+                        exception = new RuntimeException(" [ROOT] ");
                         current = node.execute(this,current);
                     }
                     case TaskNode node -> {
@@ -115,6 +115,9 @@ public final class StreamScope {
                                         "\n" +
                                         Arrays.toString(exception.getStackTrace())
                                     );
+                            }
+                            else {
+                                new RuntimeException("Uncaught Exception, no guard & yield clause. See documentation.",e).printStackTrace();
                             }
                         }
                     }

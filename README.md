@@ -30,7 +30,7 @@
 > can return values for when an error is encountered\
 > which will be passed upstream whenever one is caught\
 > but, it can also be used for printing error logs.\
-> You can see below for for documentation on error catching.
+> You can see below for documentation on error catching.
 
 ## Methods And Operations
 > | Method                                                     | Type                   | Description                                                                                                                              |
@@ -65,7 +65,7 @@
 > | `.fork(String id, Function<List<T>,AsynchronousStream<?>>` | Forking Operation      | Starts a parallel fork task.                                                                                                             |
 > | `.forkEach(Function<T,AsynchronousStream<?>>)`             | Forking Operation      | Starts a parallel fork task for each item inside the Stream.                                                                             |
 > | `.gather(Class<T>)`                                        | Forking Operation      | Gathers ALL forked tasks. and adds the results (in the order of adding)                                                                  |           
-> | `.collect(Class<T>,String... ids)`                           | Forking Operation      | Gathers the results of the supplied forked tasks in the order as supplied in the `ids` array.                                            |
+> | `.collect(Class<T>,String... ids)`                         | Forking Operation      | Gathers the results of the supplied forked tasks in the order as supplied in the `ids` array.                                            |
 
 ## Operation Usages
 #### Forking Operations
@@ -81,8 +81,8 @@ void main() {
             .gather(Integer.class)
             .toList();
 }
-// This creates 10 forks, and gathers all of them together,
-// with a result of: List<Integer>{10,20,30,40,50,60,70,80,90,100}
+        // This creates 10 forks, and gathers all of them together,
+        // with a result of: List<Integer>{10,20,30,40,50,60,70,80,90,100}
 ```
 ```java
 void main() {
@@ -93,6 +93,8 @@ void main() {
                     .map(item -> item * 10)
             )
             // Here is where you would do other work, that is independent of that calculation
+            // Although after this work is done you can gather the
+            // result of the given fork and merge it with the result of the collection.
             .collect(Integer.class,"example-id")
             .toList();
 }
@@ -108,7 +110,7 @@ void main() {
             .reversed()
             .toList();
 }
-// This multiples each item by two in a seprate stream,
+// This multiples each item by two in a separate stream,
 // and then flattens it back into AsyncStream<Integer> and then
 // reverses it for the result of: List<Integer>{10,8,6,4,2}
 ```
@@ -129,7 +131,7 @@ void main() {
             .loop(10,(items) -> new AsyncStream<>(items).map(item -> item + 1))
             .toList();
 }
-// Adds 10 to every item in the stream (via a loop) and then converts it into a list.
+    // Adds 10 to every item in the stream (via a loop) and then converts it into a list.
 ```
 ```java
 void main() {
@@ -144,22 +146,32 @@ void main() {
                 scope.cancel();
             })
             .toList();
-    // Semantically, this just prints the stack trace, and then cancels the AsyncStream whenever it encounters an error.
-    // Although, we will explore the other iteration of this, which continues execution with a supplied value.
+    // This is essentially the same as the latter, although it cancels the stream instead of returning
+    // a default value, which can be useful in some cases.
 }
 ```
 ```java
 void main() {
     List<integer> result =
-        new AsyncStream<>(1,2,3,4,5)
-            .map(item -> {
-                if (item == 3) throw new RuntimeException("EXAMPLE!");
-                return item * 2;
-            })
-            .intercept((error,scope) -> {
+        new AsyncStream<>(1, 2, 3, 4, 5)
+            .guard(self -> self
+                .map(item -> {
+                    if (item == 3) throw new RuntimeException("EXAMPLE!");
+                    return item * 2;
+                })
+                .submit(() -> System.out.println("Completed Error Catch"))
+            )
+            .yield(err -> {
                 error.printStackTrace();
-                return List.of(1,2,3,4);
+                return Arrays.asList(5, 4, 3, 2, 1);
             })
             .toList();
+    // In this example all this does is it guards the two methods, 
+    // .map & .submit and if any of them throws errors it merges
+    // all exceptions thrown, and at the yield if there is in fact
+    // an error present, it will present the user with the error.
+    // Although if there is no error, the code block will never
+    // be executed which ensures null-safety.
+    
 }
 ```

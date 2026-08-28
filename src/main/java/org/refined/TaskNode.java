@@ -48,8 +48,8 @@ public abstract class TaskNode<T> {
             if (exception != null) {
                 StringBuilder builder = new StringBuilder();
                 exception.getMessage().lines()
-                        .map(str -> str.replaceAll(",","\n    "))
-                        .forEachOrdered(builder::append);
+                    .map(str -> str.replace(",","\n    "))
+                    .forEachOrdered(builder::append);
                 return ((Function<RuntimeException,List<T>>) params.getFirst()).apply(new RuntimeException(builder.toString()));
             }
             return items;
@@ -57,7 +57,6 @@ public abstract class TaskNode<T> {
 
     }
 
-    @SuppressWarnings("InstantiatingAThreadWithDefaultRunMethod")
     public static class NameNode<T> extends TaskNode<T> {
 
         public NameNode(String name) {
@@ -71,7 +70,7 @@ public abstract class TaskNode<T> {
 
         @Override
         public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<T> items) throws RuntimeException {
-            scope.worker = new Thread((String) params.getFirst());
+            scope.worker = Thread.ofVirtual().name((String) params.getFirst()).unstarted(() -> {});
             return (List<T>) StreamScope.EMPTY;
         }
     }
@@ -98,6 +97,7 @@ public abstract class TaskNode<T> {
         public CompleteNode(Consumer<List<T>> consumer) {
             super(consumer);
         }
+
         public CompleteNode(Runnable runnable) {
             Consumer<List<T>> consumer = _ -> runnable.run();
             super(consumer);
