@@ -1,5 +1,6 @@
 package org.refined;
 
+import org.jetbrains.annotations.Async;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
@@ -100,19 +101,24 @@ public abstract class AsynchronousStream<T> {
     // Collection Operations
 
     // Error Handling
-    public AsynchronousStream<T> test(Function<List<T>,AsynchronousStream<T>> fn) throws RuntimeException {
+    public <R> AsynchronousStream<R> guard(Function<AsynchronousStream<T>,AsynchronousStream<R>> fn) {
         scope.check();
-        scope.addTask(new TaskNode.TestNode<>(fn));
+        scope.addTask(new TaskNode.GuardNode<>());
+        return this.repack(fn.apply(this).scope);
+    }
+    public AsynchronousStream<T> guard() {
+        scope.check();
+        scope.addTask(new TaskNode.GuardNode<>());
         return this;
     }
-    public AsynchronousStream<T> fail(Function<RuntimeException,List<T>> fn) throws RuntimeException {
+    public AsynchronousStream<T> yield(Function<RuntimeException,List<T>> fn) {
         scope.check();
-        scope.addTask(new TaskNode.FailNode<>(fn));
+        scope.addTask(new TaskNode.YieldNode<>(fn));
         return this;
     }
-    public AsynchronousStream<T> fail(Consumer<RuntimeException> consumer) throws RuntimeException {
+    public AsynchronousStream<T> yield(Consumer<RuntimeException> consumer) {
         scope.check();
-        scope.addTask(new TaskNode.FailNode<>(consumer));
+        scope.addTask(new TaskNode.YieldNode<>(consumer));
         return this;
     }
     // Error Handling

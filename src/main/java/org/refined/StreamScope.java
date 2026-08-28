@@ -5,11 +5,11 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-@SuppressWarnings({"rawtypes", "unchecked", "CallToPrintStackTrace"})
+@SuppressWarnings({"rawtypes", "unchecked"})
 public final class StreamScope {
 
     /**
-     * @param nodes Adds a TaskNode to the stack
+     * @param nodes Adds a TaskNode to the queue
      */
     public void addTask(TaskNode<?>... nodes) {
         taskIndex += nodes.length;
@@ -44,11 +44,7 @@ public final class StreamScope {
      */
     public void start() {
         if (isStarted()) return;
-        try {
-            run();
-        } catch (RuntimeException e) {
-            System.out.println(".start threw (which means .join did too)");
-        }
+        run();
     }
 
     List<Object> join() {
@@ -56,11 +52,7 @@ public final class StreamScope {
     }
     List<Object> join(long ms) {
         if (isCancelled()) return EMPTY;
-        try {
-            if (!isStarted()) start();
-        } catch (RuntimeException e) {
-            System.out.println("Join threw!");
-        }
+        if (!isStarted()) start();
         try {
             if (ms <= 0) {
                 latch.await();
@@ -93,19 +85,39 @@ public final class StreamScope {
         String name = worker == null ? "N/A" : worker.getName();
         worker = Thread.ofVirtual().factory().newThread(() -> {
             if (current == null) current = EMPTY;
+            boolean catching = false;
+            RuntimeException exception = new RuntimeException(" [ROOT]");
             while (taskIndex < tasks.size()) {
                 if (isCancelled()) break;
-                System.out.println(taskIndex);
-                try {
-                    current = ((TaskNode<Object>) tasks.get(taskIndex++)).execute(this, current);
-                } catch (TaskNode.StreamInterruption e) {
-                    System.out.println("StreamException");
-                    throw new RuntimeException(e);
-                } catch (RuntimeException e) {
-                    System.out.println("RuntimeException");
-                    this.cancel();
-                    e.printStackTrace();
-                    break;
+                switch (tasks.get(taskIndex++)) {
+                    case TaskNode.GuardNode node -> {
+                        catching = true;
+                        current = node.execute(this,current);
+                    }
+                    case TaskNode.YieldNode node -> {
+                        catching = false;
+                        node.params.add(exception);
+                        exception = new RuntimeException(" [ROOT]");
+                        current = node.execute(this,current);
+                    }
+                    case TaskNode node -> {
+                        try {
+                            current = node.execute(this, current);
+                        } catch (RuntimeException e) {
+                            if (catching) {
+                                exception =
+                                    new RuntimeException(
+                                        e.getMessage() +
+                                        "\n" +
+                                        Arrays.toString(e.getStackTrace()) +
+                                        "\n" +
+                                        exception.getMessage() +
+                                        "\n" +
+                                        Arrays.toString(exception.getStackTrace())
+                                    );
+                            }
+                        }
+                    }
                 }
             }
             latch.countDown();

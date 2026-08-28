@@ -12,50 +12,29 @@ public abstract class TaskNode<T> {
 
     protected List<Object> params;
     protected TaskNode(Object... items) {
-        this.params = Arrays.asList(items);
+        this.params = new ArrayList<>(List.of(items));
     }
 
     public int weight() { return 2; }
 
     public abstract @NotNull List<T> execute(@NotNull StreamScope scope,@UnknownNullability List<T> items) throws RuntimeException;
 
-    public static class TestNode<T> extends TaskNode<T> {
+    public static class GuardNode<T> extends TaskNode<T> {
 
-        public TestNode(Function<List<T>,AsynchronousStream<T>> fn) {
-            super(fn);
-        }
+        public GuardNode() {}
 
         @Override
         public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<T> items) throws RuntimeException {
-            System.out.println(scope.taskIndex);
-            final List<T> list;
-            try {
-                System.out.println("TRY:");
-                list = ((Function<List<T>,AsynchronousStream<T>>) params.getFirst()).apply(items).toList();
-                System.out.println("Passed");
-            } catch (StreamInterruption e) {
-                System.out.println("caught");
-                return ((Function<RuntimeException,List<T>>)(((TaskNode<T>) scope.tasks.get(scope.taskIndex++)).params.getFirst())).apply(e);
-            } catch (RuntimeException e) {
-                e.printStackTrace();
-                throw e;
-            }
-            scope.taskIndex++;
-            return list;
+            return items;
         }
-    }
-    public static final class StreamInterruption extends RuntimeException {
-        public StreamInterruption(String message) {
-            super(message);
-        }
-    }
-    public static class FailNode<T> extends TaskNode<T> {
 
-        public FailNode(Function<RuntimeException,List<T>> fn) {
+    }
+    public static class YieldNode<T> extends TaskNode<T> {
+
+        public YieldNode(Function<RuntimeException,List<T>> fn) {
             super(fn);
         }
-
-        public FailNode(Consumer<RuntimeException> consumer) {
+        public YieldNode(Consumer<RuntimeException> consumer) {
             Function<RuntimeException,List<T>> fn = err -> {
                 consumer.accept(err);
                 return (List<T>) StreamScope.EMPTY;
@@ -65,8 +44,17 @@ public abstract class TaskNode<T> {
 
         @Override
         public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<T> items) throws RuntimeException {
+            RuntimeException exception = (RuntimeException) params.getLast();
+            if (exception != null) {
+                StringBuilder builder = new StringBuilder();
+                exception.getMessage().lines()
+                        .map(str -> str.replaceAll(",","\n    "))
+                        .forEachOrdered(builder::append);
+                return ((Function<RuntimeException,List<T>>) params.getFirst()).apply(new RuntimeException(builder.toString()));
+            }
             return items;
         }
+
     }
 
     @SuppressWarnings("InstantiatingAThreadWithDefaultRunMethod")
