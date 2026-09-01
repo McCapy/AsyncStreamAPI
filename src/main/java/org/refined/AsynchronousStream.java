@@ -73,14 +73,14 @@ public abstract class AsynchronousStream<T> {
     // Constructors and Factory-Constructors
 
     // Status Operations
-    public final AsynchronousStream<T> start()  {
+    public AsynchronousStream<T> start()  {
         scope.start();
         return this;
     }
-    public final void cancel()  {
+    public void cancel()  {
         scope.cancel();
     }
-    public final AsynchronousStream<T> named(String id)  {
+    public AsynchronousStream<T> named(String id)  {
         scope.check();
         scope.addTask(new TaskNode.NameNode<T>(id));
         return this;
