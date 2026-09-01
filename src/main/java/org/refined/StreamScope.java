@@ -4,6 +4,7 @@ import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public final class StreamScope {
@@ -39,11 +40,11 @@ public final class StreamScope {
         return cancelled.get();
     }
 
-    /**
-     * Starts the AsyncStream
-     */
+    int end = 0;
     public void start() {
         if (isStarted()) return;
+        addTask(new TaskNode.EndNode<>());
+        end = taskIndex;
         run();
     }
 
@@ -88,7 +89,13 @@ public final class StreamScope {
             boolean catching = false;
             RuntimeException exception = new RuntimeException(" [ROOT] ");
             while (taskIndex < tasks.size()) {
-                if (isCancelled()) break;
+                if (isCancelled()) {
+                    taskIndex = end+1;
+                    while (taskIndex < tasks.size()) {
+                        ((Consumer<RuntimeException>) tasks.get(taskIndex++).params.getFirst()).accept(exception);
+                    }
+                    break;
+                }
                 switch (tasks.get(taskIndex++)) {
                     case TaskNode.GuardNode node -> {
                         catching = true;

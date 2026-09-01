@@ -14,10 +14,47 @@ public abstract class TaskNode<T> {
     protected TaskNode(Object... items) {
         this.params = new ArrayList<>(List.of(items));
     }
-
     public int weight() { return 2; }
 
     public abstract @NotNull List<T> execute(@NotNull StreamScope scope,@UnknownNullability List<T> items) throws RuntimeException;
+
+    public static class CancelNode<T> extends TaskNode<T> {
+
+        public CancelNode(Consumer<RuntimeException> consumer) {
+            super(consumer);
+        }
+        public CancelNode(Runnable runnable) {
+            Consumer<RuntimeException> consumer = _ -> runnable.run();
+            super(consumer);
+        }
+
+        @Override
+        public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<T> items) throws RuntimeException {
+            return items;
+        }
+
+        @Override
+        public int weight() {
+            return 5;
+        }
+
+    }
+
+    public static class EndNode<T> extends TaskNode<T> {
+
+        public EndNode() { }
+
+        @Override
+        public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<T> items) throws RuntimeException {
+            scope.taskIndex = scope.tasks.size();
+            return items;
+        }
+
+        @Override
+        public int weight() {
+            return 4;
+        }
+    }
 
     public static class GuardNode<T> extends TaskNode<T> {
 

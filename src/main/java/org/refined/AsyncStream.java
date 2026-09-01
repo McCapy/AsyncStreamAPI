@@ -153,6 +153,10 @@ public final class AsyncStream<T> extends AsynchronousStream<T> {
     public AsyncStream<T> onCancel(Runnable runnable) {
         return (AsyncStream<T>) super.onCancel(runnable);
     }
+    @Override
+    public AsyncStream<T> onCancel(Consumer<RuntimeException> consumer) {
+        return (AsyncStream<T>) super.onCancel(consumer);
+    }
 
     @Override
     public AsyncStream<T> onComplete(Runnable runnable) {
