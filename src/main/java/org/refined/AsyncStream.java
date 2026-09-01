@@ -40,6 +40,21 @@ public final class AsyncStream<T> extends AsynchronousStream<T> {
     }
 
     @Override
+    public AsyncStream<T> start() {
+        return (AsyncStream<T>) super.start();
+    }
+
+    @Override
+    public void cancel() {
+        super.cancel();
+    }
+
+    @Override
+    public AsyncStream<T> named(String id) {
+        return (AsyncStream<T>) super.named(id);
+    }
+
+    @Override
     public AsyncStream<T> filter(Predicate<T> predicate) {
         return (AsyncStream<T>) super.filter(predicate);
     }

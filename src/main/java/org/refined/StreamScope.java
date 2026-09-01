@@ -70,7 +70,6 @@ public final class StreamScope {
     public void cancel() {
         if (isCompleted()) return;
         if (isCancelled()) return;
-        taskIndex = tasks.size();
         cancelled.set(true);
         for (long i = latch.getCount(); i > 0; i--) {
             latch.countDown();
@@ -80,19 +79,24 @@ public final class StreamScope {
     // Operations
 
     static final List<Object> EMPTY = new ArrayList<>(1);
+    static final Comparator<TaskNode> COMPARATOR = Comparator.comparingInt(TaskNode::weight);
     public void run() throws RuntimeException {
         taskIndex = 0;
         latch.countDown();
         String name = worker == null ? "N/A" : worker.getName();
+        tasks.sort(COMPARATOR);
+        System.out.println(tasks);
         worker = Thread.ofVirtual().factory().newThread(() -> {
             if (current == null) current = EMPTY;
             boolean catching = false;
             RuntimeException exception = new RuntimeException(" [ROOT] ");
             while (taskIndex < tasks.size()) {
                 if (isCancelled()) {
-                    taskIndex = end+1;
+                    taskIndex = end - 1;
                     while (taskIndex < tasks.size()) {
-                        ((Consumer<RuntimeException>) tasks.get(taskIndex++).params.getFirst()).accept(exception);
+                        TaskNode<Object> other = tasks.get(taskIndex++);
+                        other.params.add(exception);
+                        current = other.execute(this, current);
                     }
                     break;
                 }
@@ -107,7 +111,13 @@ public final class StreamScope {
                         exception = new RuntimeException(" [ROOT] ");
                         current = node.execute(this,current);
                     }
+                    case TaskNode.EndNode node -> {
+                        current = node.execute(this,current);
+                        taskIndex = tasks.size();
+                    }
                     case TaskNode node -> {
+                        System.out.println(node.getClass().getSimpleName());
+                        this.cancel();
                         try {
                             current = node.execute(this, current);
                         } catch (RuntimeException e) {

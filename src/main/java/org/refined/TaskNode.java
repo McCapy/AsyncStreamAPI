@@ -30,6 +30,7 @@ public abstract class TaskNode<T> {
 
         @Override
         public @NotNull List<T> execute(@NotNull StreamScope scope, @UnknownNullability List<T> items) throws RuntimeException {
+            ((Consumer<RuntimeException>) params.getFirst()).accept((RuntimeException) params.get(1));
             return items;
         }
 
