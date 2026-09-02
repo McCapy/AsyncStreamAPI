@@ -262,6 +262,7 @@ public abstract class AsynchronousStream<T> {
     }
     public AsynchronousStream<T> onCancel(Runnable runnable)  {
         scope.check();
+        scope.addTask(new TaskNode.CancelNode<>(runnable));
         return this;
     }
     public AsynchronousStream<T> onCancel(Consumer<RuntimeException> consumer) {

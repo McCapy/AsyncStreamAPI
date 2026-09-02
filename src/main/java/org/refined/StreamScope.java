@@ -4,14 +4,10 @@ import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public final class StreamScope {
 
-    /**
-     * @param nodes Adds a TaskNode to the queue
-     */
     public void addTask(TaskNode<?>... nodes) {
         taskIndex += nodes.length;
         tasks.addAll(List.of(nodes));
@@ -52,7 +48,6 @@ public final class StreamScope {
         return join(-1L);
     }
     List<Object> join(long ms) {
-        if (isCancelled()) return EMPTY;
         if (!isStarted()) start();
         try {
             if (ms <= 0) {
@@ -64,6 +59,7 @@ public final class StreamScope {
         } catch (InterruptedException e) {
             return EMPTY;
         }
+        if (isCancelled()) return EMPTY;
         joinForks();
         return current;
     }
@@ -71,10 +67,6 @@ public final class StreamScope {
         if (isCompleted()) return;
         if (isCancelled()) return;
         cancelled.set(true);
-        for (long i = latch.getCount(); i > 0; i--) {
-            latch.countDown();
-        }
-        current = EMPTY;
     }
     // Operations
 
@@ -85,14 +77,13 @@ public final class StreamScope {
         latch.countDown();
         String name = worker == null ? "N/A" : worker.getName();
         tasks.sort(COMPARATOR);
-        System.out.println(tasks);
         worker = Thread.ofVirtual().factory().newThread(() -> {
             if (current == null) current = EMPTY;
             boolean catching = false;
             RuntimeException exception = new RuntimeException(" [ROOT] ");
             while (taskIndex < tasks.size()) {
                 if (isCancelled()) {
-                    taskIndex = end - 1;
+                    taskIndex = end - 2;
                     while (taskIndex < tasks.size()) {
                         TaskNode<Object> other = tasks.get(taskIndex++);
                         other.params.add(exception);
@@ -116,12 +107,10 @@ public final class StreamScope {
                         taskIndex = tasks.size();
                     }
                     case TaskNode node -> {
-                        System.out.println(node.getClass().getSimpleName());
-                        this.cancel();
                         try {
                             current = node.execute(this, current);
                         } catch (RuntimeException e) {
-                            if (catching) {
+                            if (catching)
                                 exception =
                                     new RuntimeException(
                                         e.getMessage() +
@@ -132,9 +121,9 @@ public final class StreamScope {
                                         "\n" +
                                         Arrays.toString(exception.getStackTrace())
                                     );
-                            }
                             else {
-                                new RuntimeException("Uncaught Exception, no guard & yield clause. See documentation.",e).printStackTrace();
+                                exception = new RuntimeException("Uncaught exception; cancelling stream with id: '"+ worker.getName() +"' see documentation for error handling.");
+                                this.cancel();
                             }
                         }
                     }

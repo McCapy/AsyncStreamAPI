@@ -10,6 +10,20 @@ import java.util.function.*;
 @SuppressWarnings({"unused", "unchecked"})
 public abstract class TaskNode<T> {
 
+    /*
+    Weight Keys:
+    0  -> StreamScope initialization stage (naming)
+    1  -> prestart tasks
+    2  -> default task reign
+    3  -> postcompletion event tasks
+    4  -> end operation
+    5  -> on-cancel operation storage
+    6+ -> user-defined
+    This is what each integer corresponds to,
+    this is derived from TaskNode.weight().
+    The return value is what it should do.
+     */
+
     protected List<Object> params;
     protected TaskNode(Object... items) {
         this.params = new ArrayList<>(List.of(items));
