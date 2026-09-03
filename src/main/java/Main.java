@@ -1,21 +1,19 @@
 import org.refined.AsyncStream;
 
 @SuppressWarnings({"unused"})
-void main() throws InterruptedException {
-    Integer[] items = IntStream.rangeClosed(1,100_000).boxed().toArray(Integer[]::new);
-    long start = System.currentTimeMillis();
-    AsyncStream<Integer> result =
-        new AsyncStream<>(items)
-            .onStart(() -> System.out.println("Started"))
-            .map(item -> item * 2)
-            .onComplete(() -> System.out.println("Completed"))
-            .onCancel(err -> {
-                System.out.println("Dun Dun Dun");
-            })
-            .onCancel(() -> System.out.println("Other"))
-            .start();
-    Thread.sleep(5);
-    result.cancel();
-    System.out.println(result.toList());
-    //System.out.println(result); // prints result (causes lag though because System.out.println() is inefficient)
+void main() {
+    List<Integer> result =
+        new AsyncStream<>(1,2,3,4,5,6,7,8,9,10)
+            .map(item -> item * 10)
+            .loop(10,(items) ->
+                new AsyncStream<>(items)
+                    .map(item -> item + 1)
+            )
+            .fork("example_id",items ->
+                new AsyncStream<>(items)
+                    .map(item -> item * 2)
+            )
+            .collect(Integer.class,List.of("example_id"))
+            .toList();
+    System.out.println(result);
 }

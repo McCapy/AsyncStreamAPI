@@ -8,14 +8,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @SuppressWarnings({"rawtypes", "unchecked"})
 public final class StreamScope {
 
-    public void addTask(TaskNode<?>... nodes) {
-        taskIndex += nodes.length;
-        tasks.addAll(List.of(nodes));
+    public void addTask(AsyncStage<?,?>... Stages) {
+        taskIndex += Stages.length;
+        tasks.addAll(List.of(Stages));
     }
 
     private final AtomicBoolean cancelled = new AtomicBoolean(false);
     private final CountDownLatch latch = new CountDownLatch(2);
-    public final ArrayList<TaskNode> tasks = new ArrayList<>(2);
+    public final ArrayList<AsyncStage> tasks = new ArrayList<>(2);
     public final LinkedHashMap<String,AsynchronousStream<Object>> forkMap = new LinkedHashMap<>(4);
 
     public Thread worker;
@@ -39,7 +39,7 @@ public final class StreamScope {
     int end = 0;
     public void start() {
         if (isStarted()) return;
-        addTask(new TaskNode.EndNode<>());
+        addTask(new AsyncStage.EndStage<>());
         end = taskIndex;
         run();
     }
@@ -71,7 +71,7 @@ public final class StreamScope {
     // Operations
 
     static final List<Object> EMPTY = new ArrayList<>(1);
-    static final Comparator<TaskNode> COMPARATOR = Comparator.comparingInt(TaskNode::weight);
+    static final Comparator<AsyncStage> COMPARATOR = Comparator.comparingInt(AsyncStage::weight);
     public void run() throws RuntimeException {
         taskIndex = 0;
         latch.countDown();
@@ -85,30 +85,30 @@ public final class StreamScope {
                 if (isCancelled()) {
                     taskIndex = end - 2;
                     while (taskIndex < tasks.size()) {
-                        TaskNode<Object> other = tasks.get(taskIndex++);
+                        AsyncStage<Object,Object> other = tasks.get(taskIndex++);
                         other.params.add(exception);
                         current = other.execute(this, current);
                     }
                     break;
                 }
                 switch (tasks.get(taskIndex++)) {
-                    case TaskNode.GuardNode node -> {
+                    case AsyncStage.GuardStage Stage -> {
                         catching = true;
-                        current = node.execute(this,current);
+                        current = Stage.execute(this,current);
                     }
-                    case TaskNode.YieldNode node -> {
+                    case AsyncStage.YieldStage Stage -> {
                         catching = false;
-                        node.params.add(exception);
+                        Stage.params.add(exception);
                         exception = new RuntimeException(" [ROOT] ");
-                        current = node.execute(this,current);
+                        current = Stage.execute(this,current);
                     }
-                    case TaskNode.EndNode node -> {
-                        current = node.execute(this,current);
+                    case AsyncStage.EndStage Stage -> {
+                        current = Stage.execute(this,current);
                         taskIndex = tasks.size();
                     }
-                    case TaskNode node -> {
+                    case AsyncStage Stage -> {
                         try {
-                            current = node.execute(this, current);
+                            current = Stage.execute(this, current);
                         } catch (RuntimeException e) {
                             if (catching)
                                 exception =
@@ -135,7 +135,7 @@ public final class StreamScope {
         worker.start();
     }
 
-    private static final RuntimeException ERROR = new RuntimeException("Operations cannot be added post-start, unless enacted by a TaskNode.");
+    private static final RuntimeException ERROR = new RuntimeException("Operations cannot be added post-start, unless enacted by a TaskStage.");
 
     void check() throws RuntimeException {
         if (!this.isUnstarted()) throw ERROR;
