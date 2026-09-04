@@ -5,18 +5,25 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-@SuppressWarnings({"rawtypes", "unchecked"})
+@SuppressWarnings({"unchecked"})
 public final class StreamScope {
 
-    public void addTask(AsyncStage<?,?>... Stages) {
-        taskIndex += Stages.length;
-        tasks.addAll(List.of(Stages));
+    public AsyncStage<?,?> head;
+    public AsyncStage<?,?> tail;
+
+    public void wrap(AsyncStage<?,?> stage) {
+        taskIndex++;
+        if (head == null) {
+            head = stage;
+        }
+        else {
+            tail.next = stage;
+        }
+        tail = stage;
     }
 
     private final AtomicBoolean cancelled = new AtomicBoolean(false);
     private final CountDownLatch latch = new CountDownLatch(2);
-    public final ArrayList<AsyncStage> tasks = new ArrayList<>(2);
-    public final LinkedHashMap<String,AsynchronousStream<Object>> forkMap = new LinkedHashMap<>(4);
 
     public Thread worker;
     public List<Object> current;
@@ -36,17 +43,17 @@ public final class StreamScope {
         return cancelled.get();
     }
 
-    int end = 0;
     public void start() {
         if (isStarted()) return;
-        addTask(new AsyncStage.EndStage<>());
-        end = taskIndex;
-        run();
+        taskIndex = 0;
+        latch.countDown();
+        worker = Thread.ofVirtual().factory().newThread(() -> {
+            head.start(this,EMPTY);
+            latch.countDown();
+        });
+        worker.start();
     }
 
-    List<Object> join() {
-        return join(-1L);
-    }
     List<Object> join(long ms) {
         if (!isStarted()) start();
         try {
@@ -54,13 +61,12 @@ public final class StreamScope {
                 latch.await();
             }
             else {
-                if (!latch.await(ms, TimeUnit.MILLISECONDS)) return EMPTY;
+                if (!latch.await(ms, TimeUnit.MILLISECONDS)) return (List<Object>) EMPTY;
             }
         } catch (InterruptedException e) {
-            return EMPTY;
+            return (List<Object>) EMPTY;
         }
-        if (isCancelled()) return EMPTY;
-        joinForks();
+        if (isCancelled()) return (List<Object>) EMPTY;
         return current;
     }
     public void cancel() {
@@ -70,89 +76,9 @@ public final class StreamScope {
     }
     // Operations
 
-    static final List<Object> EMPTY = new ArrayList<>(1);
-    static final Comparator<AsyncStage> COMPARATOR = Comparator.comparingInt(AsyncStage::weight);
-    public void run() throws RuntimeException {
-        taskIndex = 0;
-        latch.countDown();
-        String name = worker == null ? "N/A" : worker.getName();
-        tasks.sort(COMPARATOR);
-        worker = Thread.ofVirtual().factory().newThread(() -> {
-            if (current == null) current = EMPTY;
-            boolean catching = false;
-            RuntimeException exception = new RuntimeException(" [ROOT] ");
-            while (taskIndex < tasks.size()) {
-                if (isCancelled()) {
-                    taskIndex = end - 2;
-                    while (taskIndex < tasks.size()) {
-                        AsyncStage<Object,Object> other = tasks.get(taskIndex++);
-                        other.params.add(exception);
-                        current = other.execute(this, current);
-                    }
-                    break;
-                }
-                switch (tasks.get(taskIndex++)) {
-                    case AsyncStage.GuardStage Stage -> {
-                        catching = true;
-                        current = Stage.execute(this,current);
-                    }
-                    case AsyncStage.YieldStage Stage -> {
-                        catching = false;
-                        Stage.params.add(exception);
-                        exception = new RuntimeException(" [ROOT] ");
-                        current = Stage.execute(this,current);
-                    }
-                    case AsyncStage.EndStage Stage -> {
-                        current = Stage.execute(this,current);
-                        taskIndex = tasks.size();
-                    }
-                    case AsyncStage Stage -> {
-                        try {
-                            current = Stage.execute(this, current);
-                        } catch (RuntimeException e) {
-                            if (catching)
-                                exception =
-                                    new RuntimeException(
-                                        e.getMessage() +
-                                        "\n" +
-                                        Arrays.toString(e.getStackTrace()) +
-                                        "\n" +
-                                        exception.getMessage() +
-                                        "\n" +
-                                        Arrays.toString(exception.getStackTrace())
-                                    );
-                            else {
-                                exception = new RuntimeException("Uncaught exception; cancelling stream with id: '"+ worker.getName() +"' see documentation for error handling.");
-                                this.cancel();
-                            }
-                        }
-                    }
-                }
-            }
-            latch.countDown();
-        });
-        worker.setName(name);
-        worker.start();
-    }
-
-    private static final RuntimeException ERROR = new RuntimeException("Operations cannot be added post-start, unless enacted by a TaskStage.");
-
+    static final List<?> EMPTY = new ArrayList<>(1);
     void check() throws RuntimeException {
-        if (!this.isUnstarted()) throw ERROR;
-    }
-
-    public void joinForks() {
-        joinForks(this);
-    }
-    private void joinForks(StreamScope scope) {
-        for (AsynchronousStream<Object> stream : scope.forkMap.values()) {
-            try {
-                StreamScope sScope = stream.scope;
-                sScope.join();
-                sScope.joinForks(sScope);
-            }
-            catch (RuntimeException _) {}
-        }
+        if (!this.isUnstarted()) throw new RuntimeException("Operations cannot be added post-start, unless enacted by a TaskStage.");
     }
 
 }

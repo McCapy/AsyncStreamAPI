@@ -10,172 +10,32 @@ import java.util.function.*;
 @SuppressWarnings({"unused", "unchecked"})
 public abstract class AsyncStage<I,O> {
 
-    protected List<Object> params;
-    protected AsyncStage(Object... items) {
-        this.params = new ArrayList<>(List.of(items));
+    public abstract @NotNull List<?> compute(@NotNull StreamScope scope, @UnknownNullability List<?> items) throws RuntimeException;
+    protected AsyncStage<?,?> next;
+    final List<?> start(StreamScope scope, List<?> items) {
+        System.out.println(items);
+        System.out.println("started");
+        return advance(scope,compute(scope,items));
     }
-    public int weight() { return 2; }
-    
-    public abstract @NotNull List<O> execute(@NotNull StreamScope scope,@UnknownNullability List<I> items) throws RuntimeException;
-
-    public static class CancelStage<I,O> extends AsyncStage<I,I> {
-
-        public CancelStage(Consumer<RuntimeException> consumer) {
-            super(consumer);
+    final List<?> advance(StreamScope scope,List<?> items) {
+        System.out.println(items);
+        System.out.println("advancing");
+        if (next != null) {
+            return next.start(scope,items);
         }
-        public CancelStage(Runnable runnable) {
-            Consumer<RuntimeException> consumer = _ -> runnable.run();
-            super(consumer);
-        }
-
-        @Override
-        public @NotNull List<I> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            ((Consumer<RuntimeException>) params.getFirst()).accept((RuntimeException) params.get(1));
-            return items;
-        }
-
-        @Override
-        public int weight() {
-            return 5;
-        }
-
-    }
-
-    public static class EndStage<I,O> extends AsyncStage<I,I> {
-
-        public EndStage() { }
-
-        @Override
-        public @NotNull List<I> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            scope.taskIndex = scope.tasks.size();
-            return items;
-        }
-
-        @Override
-        public int weight() {
-            return 4;
-        }
-    }
-
-    public static class GuardStage<I,O> extends AsyncStage<I,I> {
-
-        public GuardStage() {}
-
-        @Override
-        public @NotNull List<I> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            return items;
-        }
-
-    }
-    public static class YieldStage<I,O> extends AsyncStage<I,I> {
-
-        public YieldStage(Function<RuntimeException,List<I>> fn) {
-            super(fn);
-        }
-        public YieldStage(Consumer<RuntimeException> consumer) {
-            Function<RuntimeException,List<I>> fn = err -> {
-                consumer.accept(err);
-                return (List<I>) StreamScope.EMPTY;
-            };
-            super(fn);
-        }
-
-        @Override
-        public @NotNull List<I> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            RuntimeException exception = (RuntimeException) params.getLast();
-            if (exception != null) {
-                StringBuilder builder = new StringBuilder();
-                exception.getMessage().lines()
-                    .map(str -> str.replace(",","\n    "))
-                    .forEachOrdered(builder::append);
-                return ((Function<RuntimeException,List<I>>) params.getFirst()).apply(new RuntimeException(builder.toString()));
-            }
-            return items;
-        }
-
-    }
-
-    public static class NameStage<I,O> extends AsyncStage<I,I> {
-
-        public NameStage(String name) {
-            super(name);
-        }
-
-        @Override
-        public int weight() {
-            return 0;
-        }
-
-        @Override
-        public @NotNull List<I> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            scope.worker = Thread.ofVirtual().name((String) params.getFirst()).unstarted(() -> {});
-            return (List<I>) StreamScope.EMPTY;
-        }
-    }
-
-    public static class StartStage<I,O> extends AsyncStage<I,I> {
-
-        public StartStage(Runnable runnable) {
-            super(runnable);
-        }
-
-        @Override
-        public @NotNull List<I> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            ((Runnable)params.getFirst()).run();
-            return (List<I>) StreamScope.EMPTY;
-        }
-
-        @Override
-        public int weight() {
-            return 1;
-        }
-    }
-    public static class CompleteStage<I,O> extends AsyncStage<I,I> {
-
-        public CompleteStage(Consumer<List<I>> consumer) {
-            super(consumer);
-        }
-
-        public CompleteStage(Runnable runnable) {
-            Consumer<List<I>> consumer = _ -> runnable.run();
-            super(consumer);
-        }
-
-        @Override
-        public @NotNull List<I> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            ((Consumer<List<I>>) params.getFirst()).accept(items);
-            return (List<I>) (items.isEmpty() ? StreamScope.EMPTY : items);
-        }
-
-        @Override
-        public int weight() {
-            return 3;
-        }
-    }
-
-    public static class CollectStage<I,O> extends AsyncStage<I,O> {
-
-        public CollectStage(List<String> ids) {
-            super(ids);
-        }
-
-        @Override
-        public @NotNull List<O> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            return (List<O>) ((List<String>)params.getFirst()).parallelStream()
-                    .flatMap(id -> scope.forkMap.remove(id).toList().stream())
-                    .toList();
-        }
+        else return items;
     }
 
     public static class DelayStage<I,O> extends AsyncStage<I,I> {
+        final Duration duration;
         public DelayStage(Duration duration) {
-            super(duration);
+            this.duration = duration;
         }
 
         @Override
-        public @NotNull List<I> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
+        public @NotNull List<?> compute(@NotNull StreamScope scope, @UnknownNullability List<?> items) throws RuntimeException {
             try {
-                Thread.sleep((Duration) params.getFirst());
+                Thread.sleep(duration);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e.getMessage());
             }
@@ -184,110 +44,71 @@ public abstract class AsyncStage<I,O> {
     }
 
     public static class EmptyStage<I,O> extends AsyncStage<I,O> {
-
+        final Consumer<List<I>> consumer;
         public EmptyStage(Runnable runnable) {
-            super((Consumer<List<I>>)(_ -> runnable.run()));
+            this.consumer = (_ -> runnable.run());
         }
         public EmptyStage(Consumer<List<I>> consumer) {
-            super(consumer);
+            this.consumer = consumer;
         }
 
         @Override
-        public @NotNull List<O> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            ((Consumer<List<I>>) params.getFirst()).accept(items);
-            return (List<O>) StreamScope.EMPTY;
+        public @NotNull List<?> compute(@NotNull StreamScope scope, @UnknownNullability List<?> items) throws RuntimeException {
+            consumer.accept((List<I>) items);
+            return StreamScope.EMPTY;
         }
     }
 
     public static class FilterStage<I,O> extends AsyncStage<I,I> {
+        final Predicate<I> predicate;
         public FilterStage(Predicate<I> predicate) {
-            super(predicate);
+            this.predicate = predicate;
         }
 
         @Override
-        public @NotNull List<I> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            Predicate<I> predicate = (Predicate<I>) params.getFirst();
-            return items.stream().filter(predicate.negate()).toList();
+        public @NotNull List<?> compute(@NotNull StreamScope scope, @UnknownNullability List<?> items) throws RuntimeException {
+            return ((List<I>) items).stream().filter(predicate.negate()).toList();
         }
     }
 
     public static class FlatMapStage<I,O> extends AsyncStage<I,O> {
-
+        final Function<I, List<O>> function;
         public FlatMapStage(Function<I, List<O>> function) {
-            super(function);
+            this.function = function;
         }
 
         @Override
-        public @NotNull List<O> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            final Function<I,List<O>> fn = (Function<I, List<O>>) params.getFirst();
-            return ((List<I>) items).stream().flatMap(val -> fn.apply(val).stream()).toList();
+        public @NotNull List<?> compute(@NotNull StreamScope scope, @UnknownNullability List<?> items) throws RuntimeException {
+            return ((List<I>)items).stream().flatMap(val -> function.apply(val).stream()).toList();
         }
     }
 
     public static class ForEachStage<I,O> extends AsyncStage<I,O> {
+        final Consumer<I> consumer;
         public ForEachStage(Consumer<I> consumer) {
-            super(consumer);
+            this.consumer = consumer;
         }
 
         @Override
-        public @NotNull List<O> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            items.forEach((Consumer<I>)params.getFirst());
-            return (List<O>) StreamScope.EMPTY;
-        }
-    }
-
-    public static class ForkEachStage<I,O> extends AsyncStage<I,O> {
-
-        public ForkEachStage(Function<I, AsynchronousStream<?>> function) {
-            super(function);
-        }
-
-        @Override
-        public @NotNull List<O> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            for (int i = 0, scopeItemsSize = items.size(); i < scopeItemsSize; i++) {
-                scope.forkMap.put(String.valueOf(i), (AsyncStream<Object>) (((Function<I, AsynchronousStream<?>>) params.getFirst()).apply(items.get(i))).start());
-            }
-            return (List<O>) StreamScope.EMPTY;
-        }
-    }
-    public static class ForkStage<I,O> extends AsyncStage<I,O> {
-
-        public ForkStage(String id,Function<List<I>,AsynchronousStream<?>> function) {
-            super(id,function);
-        }
-
-        @Override
-        public @NotNull List<O> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            scope.forkMap.put((String) params.getFirst(), (AsynchronousStream<Object>) ((Function<List<I>,AsynchronousStream<?>>)params.get(1)).apply(items).start());
-            return (List<O>) StreamScope.EMPTY;
-        }
-    }
-
-    public static class GatherStage<I,O> extends AsyncStage<I,O> {
-
-        @Override
-        public @NotNull List<O> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            List<O> result = (List<O>)
-                scope.forkMap.values().parallelStream()
-                    .flatMap(stream -> stream.toList().stream())
-                    .toList();
-            scope.forkMap.clear();
-            return result;
+        public @NotNull List<?> compute(@NotNull StreamScope scope, @UnknownNullability List<?> items) throws RuntimeException {
+            ((List<I>)items).forEach(consumer);
+            return StreamScope.EMPTY;
         }
     }
 
     public static class LoopStage<I,O> extends AsyncStage<I,I> {
 
+        final int repetitions;
+        final Function<List<I>,AsynchronousStream<I>> streamFunction;
         public LoopStage(int repetitions, Function<List<I>,AsynchronousStream<I>> stream) {
-            super(repetitions,stream);
+            this.repetitions = repetitions;
+            this.streamFunction = stream;
         }
 
         @Override
-        public @NotNull List<I> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            int repetitions = (int) params.getFirst();
-            Function<List<I>,AsynchronousStream<I>> constructor = (Function<List<I>, AsynchronousStream<I>>) params.get(1);
+        public @NotNull List<?> compute(@NotNull StreamScope scope, @UnknownNullability List<?> items) throws RuntimeException {
             for (int i = 0; i < repetitions; i++) {
-                items = constructor.apply(items).toList();
+                items = streamFunction.apply((List<I>) items).toList();
             }
             return items;
         }
@@ -295,98 +116,110 @@ public abstract class AsyncStage<I,O> {
 
     public static class MapStage<I,O> extends AsyncStage<I,O> {
 
+        final Function<I,O> function;
         public MapStage(Function<I,O> function) {
-            super(function);
+            this.function = function;
         }
 
         @Override
-        public @NotNull List<O> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            return (items).stream().map((Function<I,O>) params.getFirst()).toList();
+        public @NotNull List<?> compute(@NotNull StreamScope scope, @UnknownNullability List<?> items) throws RuntimeException {
+            return ((List<I>)items).stream().map(function).toList();
         }
     }
 
     public static class OfferStage<I,O> extends AsyncStage<I,I> {
 
+        final Function<List<I>,List<I>> function;
         public OfferStage(Function<List<I>,List<I>> function) {
-            super(function);
+            this.function = function;
         }
 
         @Override
-        public @NotNull List<I> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            return ((Function<List<I>,List<I>>) params.getFirst()).apply(items);
+        public @NotNull List<?> compute(@NotNull StreamScope scope, @UnknownNullability List<?> items) throws RuntimeException {
+            return function.apply((List<I>) items);
         }
     }
 
     public static class ParallelStage<I,O> extends AsyncStage<I,O> {
 
-
+        final Function<I,O> function;
         public ParallelStage(Function<I,O> mapper) {
-            super(mapper);
+            this.function = mapper;
         }
 
         @Override
-        public @NotNull List<O> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            return (items).parallelStream().map((Function<I,O>)params.getFirst()).toList();
+        public @NotNull List<?> compute(@NotNull StreamScope scope, @UnknownNullability List<?> items) throws RuntimeException {
+            return ((List<I>)items).parallelStream().map(function).toList();
         }
     }
 
     public static class PeekStage<I,O> extends AsyncStage<I,I> {
 
+        final Consumer<I> consumer;
+
         public PeekStage(Consumer<I> consumer) {
-            super(consumer);
+            this.consumer = consumer;
         }
 
         @Override
-        public @NotNull List<I> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            items.forEach((Consumer<I>) params.getFirst());
+        public @NotNull List<?> compute(@NotNull StreamScope scope, @UnknownNullability List<?> items) throws RuntimeException {
+            ((List<I>)items).forEach(consumer);
             return items;
         }
     }
 
     public static class ReplaceStage<I,O> extends AsyncStage<I,I> {
 
+        final Predicate<I> predicate;
+        final Supplier<I> supplier;
+
         public ReplaceStage(Predicate<I> predicate, Supplier<I> supplier) {
-            super(predicate,supplier);
+            this.predicate = predicate;
+            this.supplier = supplier;
         }
 
         @Override
-        public @NotNull List<I> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            I holder = ((Supplier<I>) params.get(1)).get();
-            Predicate<I> predicate = (Predicate<I>) params.getFirst();
-            return items.stream().map((item) -> predicate.test(item) ? holder : item).toList();
+        public @NotNull List<?> compute(@NotNull StreamScope scope, @UnknownNullability List<?> items) throws RuntimeException {
+            I holder = supplier.get();
+            return ((List<I>)items).stream().map((item) -> predicate.test(item) ? holder : item).toList();
         }
     }
 
     public static class ReverseStage<I,O> extends AsyncStage<I,I> {
 
         @Override
-        public @NotNull List<I> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
+        public @NotNull List<?> compute(@NotNull StreamScope scope, @UnknownNullability List<?> items) throws RuntimeException {
             return items.reversed();
         }
     }
 
     public static class SortStage<I,O> extends AsyncStage<I,I> {
 
+        final Comparator<I> comparator;
+        final boolean parallel;
+
         public SortStage(Comparator<I> comparator, boolean parallel) {
-            super(parallel,comparator);
+            this.comparator = comparator;
+            this.parallel = parallel;
         }
 
         @Override
-        public @NotNull List<I> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
+        public @NotNull List<?> compute(@NotNull StreamScope scope, @UnknownNullability List<?> items) throws RuntimeException {
             I[] res = (I[]) items.toArray();
-            if ((boolean)params.getFirst()) Arrays.parallelSort(res, (Comparator<I>)params.get(1));
-            else Arrays.sort(res, (Comparator<I>)params.get(1));
+            if (parallel) Arrays.parallelSort(res, comparator);
+            else Arrays.sort(res, comparator);
             return Arrays.asList(res);
         }
     }
 
     public static class SubmitStage<I,O> extends AsyncStage<I,I> {
+        final Runnable runnable;
         public SubmitStage(Runnable runnable) {
-            super(runnable);
+            this.runnable = runnable;
         }
 
-        public @NotNull List<I> execute(@NotNull StreamScope scope, @UnknownNullability List<I> items) throws RuntimeException {
-            ((Runnable)params.getFirst()).run();
+        public @NotNull List<?> compute(@NotNull StreamScope scope, @UnknownNullability List<?> items) throws RuntimeException {
+            runnable.run();
             return items;
         }
     }

@@ -50,11 +50,6 @@ public final class AsyncStream<T> extends AsynchronousStream<T> {
     }
 
     @Override
-    public AsyncStream<T> named(String id) {
-        return (AsyncStream<T>) super.named(id);
-    }
-
-    @Override
     public AsyncStream<T> filter(Predicate<T> predicate) {
         return (AsyncStream<T>) super.filter(predicate);
     }
@@ -152,50 +147,6 @@ public final class AsyncStream<T> extends AsynchronousStream<T> {
     @Override
     public AsyncStream<T> replace(Predicate<T> predicate, Supplier<T> replacement) {
         return (AsyncStream<T>) super.replace(predicate, replacement);
-    }
-
-    @Override
-    public AsyncStream<T> onComplete(Consumer<List<T>> consumer) {
-        return (AsyncStream<T>) super.onComplete(consumer);
-    }
-
-    @Override
-    public AsyncStream<T> onStart(Runnable runnable) {
-        return (AsyncStream<T>) super.onStart(runnable);
-    }
-
-    @Override
-    public AsyncStream<T> onCancel(Runnable runnable) {
-        return (AsyncStream<T>) super.onCancel(runnable);
-    }
-    @Override
-    public AsyncStream<T> onCancel(Consumer<RuntimeException> consumer) {
-        return (AsyncStream<T>) super.onCancel(consumer);
-    }
-
-    @Override
-    public AsyncStream<T> onComplete(Runnable runnable) {
-        return (AsyncStream<T>) super.onComplete(runnable);
-    }
-
-    @Override
-    public <R> AsyncStream<Void> fork(String id, Function<List<T>, AsynchronousStream<?>> function) {
-        return (AsyncStream<Void>) super.fork(id, function);
-    }
-
-    @Override
-    public <R> AsyncStream<Void> forkEach(Function<T, AsynchronousStream<?>> function) {
-        return (AsyncStream<Void>) super.forkEach(function);
-    }
-
-    @Override
-    public <R> AsyncStream<R> collect(Class<R> clazz, List<String> ids) {
-        return (AsyncStream<R>) super.collect(clazz, ids);
-    }
-
-    @Override
-    public <R> AsyncStream<R> gather(Class<R> clazz) {
-        return (AsyncStream<R>) super.gather(clazz);
     }
 
     @Override
