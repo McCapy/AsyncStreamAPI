@@ -1,225 +1,261 @@
 package org.refined;
 
-import org.jetbrains.annotations.NotNull;
+import org.refined.async_stages.*;
 
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.function.*;
 
-/**
- * This is an abstract class which is designed to be extended, allowing the user
- * to define their own behavior--whether it be safe, or unsafe.
- * <p>
- *
- * What this class and the default implementation seek to achieve is simply,
- * a forkable stream with the ability to do many things which the
- * StreamAPI was not originally designed to do. Although, this combines
- * the same philosophy the StreamAPI had, along with features of the
- * FutureAPI which makes for an extremely flexible data/react-oriented
- * programming structure.
- * <p>
- *
- * Along with the extensibility which you don't see in either of the
- * aforementioned API's, especially the FutureAPI which is overall,
- * very hard to read and debug.
- * <p>
- *
- * This seeks to use a different philosophy towards handling exceptions.
- * Which allows for both checked-and unchecked-exceptions, which can
- * return a default value.
- * <p>
- *
- * It also features a better method of collecting results into a
- * data structure.
- *
- * @param <T> The list-cleaned type of the AsynchronousStream.
- */
 @SuppressWarnings({"unchecked", "unused"})
 public abstract class AsynchronousStream<T> {
 
-    protected @NotNull StreamScope scope;
+    protected AsyncStage<?,?> head;
+    protected AsyncStage<?,?> tail;
 
-    // Status Checkers
-    public final boolean isUnstarted() {
-        return scope.isUnstarted();
-    }
-    public final boolean isStarted() {
-        return scope.isStarted();
-    }
-    public final boolean isCancelled() {
-        return scope.isCancelled();
-    }
-    public final boolean isCompleted() {
-        return scope.isCompleted();
-    }
-    // Status Checkers
+    protected CompletableFuture<List<?>> future = CompletableFuture.completedFuture(null);
+    public List<AsynchronousStream<?>> forks = new ArrayList<>(5);
 
     // Constructors and Factory-Constructors
     public AsynchronousStream() {
-        scope = new StreamScope();
-        scope.wrap(new AsyncStage.OfferStage<T,Void>(items -> null));
-    }
-    public AsynchronousStream(@NotNull StreamScope scope) {
-        this.scope = scope;
+        wrap(new OfferStage<T>(_ -> null));
     }
     public AsynchronousStream(T... values) {
-        scope = new StreamScope();
-        scope.wrap(new AsyncStage.OfferStage<T,T>(_ -> Arrays.asList(values)));
+        wrap(new OfferStage<T>(_ -> Arrays.asList(values)));
     }
     public AsynchronousStream(Collection<T> collection) {
-        scope = new StreamScope();
-        scope.wrap(new AsyncStage.OfferStage<T,T>(item -> new ArrayList<>(collection)));
+        wrap(new OfferStage<T>(_ -> new ArrayList<>(collection)));
     }
+    abstract <R> AsynchronousStream<R> of(Collection<R> collection);
+    abstract <R> AsynchronousStream<R> of(R... values);
+    abstract AsynchronousStream<Void> ofEmpty();
     // Constructors and Factory-Constructors
 
+    public final boolean isStarted() {
+        return future.state().equals(Future.State.RUNNING);
+    }
+    public final boolean isCompleted() {
+        return future.isDone();
+    }
+    public final boolean isCancelled() {
+        return future.isCancelled();
+    }
+
     // Status Operations
-    public AsynchronousStream<T> start()  {
-        scope.start();
+    public AsynchronousStream<T> start(Executor executor)  {
+        if (isStarted()) return this;
+        future = CompletableFuture.supplyAsync(() -> head.start(this,EMPTY),executor);
         return this;
     }
-    public void cancel()  {
-        scope.cancel();
+    public AsynchronousStream<T> start() {
+        if (isStarted()) return this;
+        future = CompletableFuture.supplyAsync(() -> head.start(this,EMPTY),ForkJoinPool.commonPool());
+        return this;
+    }
+    public AsynchronousStream<T> cancel() {
+        if (isCancelled()) return this;
+        future.cancel(true);
+        return this;
     }
     // Status Operations
 
     // Collection Operations
     public final <R> R toAbstract(Function<List<T>,R> mapper)  {
-        return mapper.apply(((List<T>) scope.join(-1)));
+        try {
+            if (!isStarted()) start();
+            return mapper.apply(((List<T>) future.get()));
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
     }
-    public final <R> R toAbstract(long ms,Function<List<T>,R> mapper)  {
-        return mapper.apply(((List<T>) scope.join(ms)));
+    public final <R> R toAbstract(long ms,Function<List<T>,R> mapper) {
+        try {
+            if (!isStarted()) start();
+            return mapper.apply(((List<T>) future.get(ms, TimeUnit.MILLISECONDS)));
+        } catch (InterruptedException | TimeoutException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
     }
     public final T[] toArray()  {
-        return (T[]) scope.join(-1).toArray();
+        try {
+            if (!isStarted()) start();
+            return (T[]) future.get().toArray();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
     }
-    public final T[] toArray(long ms)  {
-        return (T[]) scope.join(ms).toArray();
+    public final T[] toArray(long ms) {
+        try {
+            if (!isStarted()) start();
+            return (T[]) future.get(ms,TimeUnit.MILLISECONDS).toArray();
+        } catch (InterruptedException | TimeoutException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
     }
     public final List<T> toList()  {
-        return (List<T>) scope.join(-1);
+        try {
+            if (!isStarted()) start();
+            return (List<T>) future.get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
     }
-    public final List<T> toList(long ms)  {
-        return (List<T>) scope.join(ms);
+    public final List<T> toList(long ms) {
+        try {
+            if (!isStarted()) start();
+            return (List<T>) future.get(ms,TimeUnit.MILLISECONDS);
+        } catch (InterruptedException | TimeoutException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
     }
     public final Collection<T> toCollection()  {
-        return (Collection<T>) scope.join(-1);
+        try {
+            if (!isStarted()) start();
+            return (Collection<T>) future.get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
     }
-    public final Collection<T> toCollection(long ms)  {
-        return (Collection<T>) scope.join(ms);
+    public final Collection<T> toCollection(long ms) {
+        try {
+            if (!isStarted()) start();
+            return (Collection<T>) future.get(ms,TimeUnit.MILLISECONDS);
+        } catch (InterruptedException | TimeoutException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
     }
-    // Collection Operations
 
-    // Error Handling
-    // Error Handling
+    // Collection Operations
 
     // Transformative Operations
     public <R> AsynchronousStream<R> map(Function<T,R> function)  {
-        scope.check();
-        scope.wrap(new AsyncStage.MapStage<>(function));
-        return  this.repack(scope);
+        checkStarted();
+        wrap(new MapStage<>(function));
+        return this.repack();
     }
     public <R> AsynchronousStream<R> offer(R... items)  {
-        scope.check();
-        scope.wrap(new AsyncStage.OfferStage<>((set) -> Arrays.asList(items)));
-        return this.repack(scope);
+        checkStarted();
+        wrap(new OfferStage<>((set) -> Arrays.asList(items)));
+        return this.repack();
     }
     public <R> AsynchronousStream<R> offer(Collection<R> items)  {
-        scope.check();
-        scope.wrap(new AsyncStage.OfferStage<>((set) -> new ArrayList<>(items)));
-        return this.repack(scope);
+        checkStarted();
+        wrap(new OfferStage<>((set) -> new ArrayList<>(items)));
+        return this.repack();
     }
     public AsynchronousStream<T> offer(Function<List<T>,List<T>> function)  {
-        scope.check();
-        scope.wrap(new AsyncStage.OfferStage<>(function));
+        checkStarted();
+        wrap(new OfferStage<>(function));
         return this;
     }
     public AsynchronousStream<Void> empty(Runnable runnable)  {
-        scope.check();
-        scope.wrap(new AsyncStage.EmptyStage<>(runnable));
-        return this.repack(scope);
+        checkStarted();
+        wrap(new EmptyStage<>(runnable));
+        return this.repack();
     }
     public AsynchronousStream<Void> empty()  {
-        scope.check();
-        scope.wrap(new AsyncStage.EmptyStage<>(() -> {}));
-        return this.repack(scope);
+        checkStarted();
+        wrap(new EmptyStage<>(() -> {}));
+        return this.repack();
     }
     public AsynchronousStream<Void> empty(Consumer<List<T>> consumer)  {
-        scope.check();
-        scope.wrap(new AsyncStage.EmptyStage<>(consumer));
-        return this.repack(scope);
+        checkStarted();
+        wrap(new EmptyStage<>(consumer));
+        return this.repack();
     }
     public <R> AsynchronousStream<R> flatMap(Function<T, List<R>> function)  {
-        scope.check();
-        scope.wrap(new AsyncStage.FlatMapStage<>(function));
-        return this.repack(scope);
+        checkStarted();
+        wrap(new FlatMapStage<>(function));
+        return this.repack();
     }
     public AsynchronousStream<T> parallelSort(Comparator<T> comparator)  {
-        scope.check();
-        scope.wrap(new AsyncStage.SortStage<>(comparator,true));
+        checkStarted();
+        wrap(new SortStage<>(comparator,true));
         return this;
     }
     public AsynchronousStream<T> sort(Comparator<T> comparator)  {
-        scope.check();
-        scope.wrap(new AsyncStage.SortStage<>(comparator,false));
+        checkStarted();
+        wrap(new SortStage<>(comparator,false));
         return this;
     }
     public <R> AsynchronousStream<R> parallel(Function<T,R> mapper)  {
-        scope.check();
-        scope.wrap(new AsyncStage.ParallelStage<>(mapper));
-        return this.repack(scope);
+        checkStarted();
+        wrap(new ParallelStage<>(mapper));
+        return this.repack();
     }
     // Transformative Operations
 
     // Iteration and Loops
     public AsynchronousStream<Void> forEach(Consumer<T> consumer)  {
-        scope.check();
-        scope.wrap(new AsyncStage.ForEachStage<>(consumer));
-        return this.repack(scope);
+        checkStarted();
+        wrap(new ForEachStage<>(consumer));
+        return this.repack();
     }
     public AsynchronousStream<T> peek(Consumer<T> consumer)  {
-        scope.check();
-        scope.wrap(new AsyncStage.PeekStage<>(consumer));
+        checkStarted();
+        wrap(new PeekStage<>(consumer));
         return this;
     }
     public AsynchronousStream<T> loop(int repetitions,Function<List<T>,AsynchronousStream<T>> stream)  {
-        scope.check();
-        scope.wrap(new AsyncStage.LoopStage<>(repetitions, stream));
-        return this.repack(scope);
+        checkStarted();
+        wrap(new LoopStage<>(repetitions, stream));
+        return this.repack();
     }
     // Iteration and Loops
 
     // Miscellaneous
     public AsynchronousStream<T> submit(Runnable runnable)  {
-        scope.check();
-        scope.wrap(new AsyncStage.SubmitStage<T,T>(runnable));
+        checkStarted();
+        wrap(new SubmitStage<T>(runnable));
         return this;
     }
     public AsynchronousStream<T> delay(Duration duration)  {
-        scope.check();
-        scope.wrap(new AsyncStage.DelayStage<T,T>(duration));
+        checkStarted();
+        wrap(new DelayStage<T>(duration));
         return this;
     }
     public AsynchronousStream<T> reversed()  {
-        scope.check();
-        scope.wrap(new AsyncStage.ReverseStage<T,T>());
+        checkStarted();
+        wrap(new ReverseStage<T>());
         return this;
     }
     // Miscellaneous
 
+    // Error Handling
+    public <R> AsynchronousStream<R> guard(Function<AsynchronousStream<T>,AsynchronousStream<R>> fn) {
+        checkStarted();
+        wrap(new GuardStage<>());
+        return fn.apply(this);
+    }
+    public AsynchronousStream<T> yield(Function<RuntimeException,List<T>> fn) {
+        checkStarted();
+        wrap(new YieldStage<>(fn));
+        return this;
+    }
+    public AsynchronousStream<T> yield(Consumer<RuntimeException> consumer) {
+        checkStarted();
+        wrap(new YieldStage<>(err -> {
+            consumer.accept(err);
+            return EMPTY;
+        }));
+        return repack();
+    }
+    // Error Handling
+
     // Conditionals
     public AsynchronousStream<T> filter(Predicate<T> predicate)  {
-        scope.check();
-        scope.wrap(new AsyncStage.FilterStage<>(predicate));
+        checkStarted();
+        wrap(new FilterStage<>(predicate));
         return this;
     }
     public AsynchronousStream<T> replace(Predicate<T> predicate, T replacement)  {
-        scope.check();
-        scope.wrap(new AsyncStage.ReplaceStage<>(predicate,() -> replacement));
+        checkStarted();
+        wrap(new ReplaceStage<>(predicate,() -> replacement));
         return this;
     }
     public AsynchronousStream<T> replace(Predicate<T> predicate, Supplier<T> replacement)  {
-        scope.check();
-        scope.wrap(new AsyncStage.ReplaceStage<>(predicate,replacement));
+        checkStarted();
+        wrap(new ReplaceStage<>(predicate,replacement));
         return this;
     }
     // Conditionals
@@ -228,7 +264,29 @@ public abstract class AsynchronousStream<T> {
     // Event Operations
 
     // Fork operations
+    public AsynchronousStream<Void> fork(Function<List<T>,AsynchronousStream<?>> fn) {
+        checkStarted();
+        wrap(new ForkStage<>(fn));
+        return repack();
+    }
     // Fork Operations
 
-    abstract <R> AsynchronousStream<R> repack(StreamScope scope);
+    abstract <R> AsynchronousStream<R> repack();
+
+    public static final List<?> EMPTY = new ArrayList<>(1);
+    private void wrap(AsyncStage<?,?> stage) {
+        if (head == null) {
+            head = stage;
+        }
+        else {
+            tail.next = stage;
+        }
+        tail = stage;
+    }
+    private void checkStarted() {
+        if (isStarted())
+            throw new RuntimeException(
+                "You cannot add operations during execution, unless enacted by an AsyncStage"
+            );
+    }
 }

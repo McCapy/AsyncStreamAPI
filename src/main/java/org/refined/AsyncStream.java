@@ -1,11 +1,10 @@
 package org.refined;
 
-import org.jetbrains.annotations.NotNull;
-
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.Executor;
 import java.util.function.*;
 
 @SuppressWarnings({"unchecked","unused"})
@@ -19,24 +18,38 @@ public final class AsyncStream<T> extends AsynchronousStream<T> {
         super(values);
     }
 
-    private AsyncStream(@NotNull StreamScope scope) {
-        super(scope);
-    }
-
     public AsyncStream(Collection<T> collection) {
         super(collection);
     }
 
-    public static <R> AsyncStream<R> of(Collection<R> collection) {
+    @Override
+    public <R> AsyncStream<R> of(Collection<R> collection) {
         return new AsyncStream<>(collection);
     }
 
-    public static AsyncStream<Void> ofEmpty() {
+    @Override
+    public <R> AsyncStream<R> of(R... values) {
+        return new AsyncStream<>(values);
+    }
+
+    @Override
+    public AsyncStream<Void> ofEmpty() {
         return new AsyncStream<>();
     }
 
-    public static <R> AsyncStream<R> of(R... items) {
-        return new AsyncStream<>(items);
+    @Override
+    public AsyncStream<T> yield(Consumer<RuntimeException> consumer) {
+        return (AsyncStream<T>) super.yield(consumer);
+    }
+
+    @Override
+    public AsyncStream<T> yield(Function<RuntimeException, List<T>> fn) {
+        return (AsyncStream<T>) super.yield(fn);
+    }
+
+    @Override
+    public <R> AsyncStream<R> guard(Function<AsynchronousStream<T>, AsynchronousStream<R>> fn) {
+        return (AsyncStream<R>) super.guard(fn);
     }
 
     @Override
@@ -45,8 +58,11 @@ public final class AsyncStream<T> extends AsynchronousStream<T> {
     }
 
     @Override
-    public void cancel() {
-        super.cancel();
+    public AsyncStream<T> start(Executor executor) { return (AsyncStream<T>) super.start(executor); }
+
+    @Override
+    public AsyncStream<T> cancel() {
+        return (AsyncStream<T>) super.cancel();
     }
 
     @Override
@@ -150,7 +166,7 @@ public final class AsyncStream<T> extends AsynchronousStream<T> {
     }
 
     @Override
-    public <R> AsynchronousStream<R> repack(StreamScope scope) {
-        return new AsyncStream<>(scope);
+    <R> AsyncStream<R> repack() {
+        return (AsyncStream<R>) this;
     }
 }
