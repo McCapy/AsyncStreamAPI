@@ -9,4 +9,6 @@ void main() {
             .flatMap(AsynchronousStream::toList)
             .start();
     System.out.println(stream.toList());
+
+    // dun dun dun
 }
