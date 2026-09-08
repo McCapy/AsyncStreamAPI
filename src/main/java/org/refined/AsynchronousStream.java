@@ -1,6 +1,7 @@
 package org.refined;
 
 import org.refined.async_stages.*;
+import org.refined.exceptions.JoinException;
 
 import java.time.Duration;
 import java.util.*;
@@ -26,6 +27,7 @@ public abstract class AsynchronousStream<T> {
     public AsynchronousStream(Collection<T> collection) {
         wrap(new OfferStage<T>(_ -> new ArrayList<>(collection)));
     }
+
     abstract <R> AsynchronousStream<R> of(Collection<R> collection);
     abstract <R> AsynchronousStream<R> of(R... values);
     abstract AsynchronousStream<Void> ofEmpty();
@@ -65,7 +67,7 @@ public abstract class AsynchronousStream<T> {
             if (!isStarted()) start();
             return mapper.apply(((List<T>) future.get()));
         } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
+            throw new JoinException(e.getMessage());
         }
     }
     public final <R> R toAbstract(long ms,Function<List<T>,R> mapper) {
@@ -73,7 +75,7 @@ public abstract class AsynchronousStream<T> {
             if (!isStarted()) start();
             return mapper.apply(((List<T>) future.get(ms, TimeUnit.MILLISECONDS)));
         } catch (InterruptedException | TimeoutException | ExecutionException e) {
-            throw new RuntimeException(e);
+            throw new JoinException(e.getMessage());
         }
     }
     public final T[] toArray()  {
@@ -81,7 +83,7 @@ public abstract class AsynchronousStream<T> {
             if (!isStarted()) start();
             return (T[]) future.get().toArray();
         } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
+            throw new JoinException(e.getMessage());
         }
     }
     public final T[] toArray(long ms) {
@@ -89,7 +91,7 @@ public abstract class AsynchronousStream<T> {
             if (!isStarted()) start();
             return (T[]) future.get(ms,TimeUnit.MILLISECONDS).toArray();
         } catch (InterruptedException | TimeoutException | ExecutionException e) {
-            throw new RuntimeException(e);
+            throw new JoinException(e.getMessage());
         }
     }
     public final List<T> toList()  {
@@ -97,7 +99,7 @@ public abstract class AsynchronousStream<T> {
             if (!isStarted()) start();
             return (List<T>) future.get();
         } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
+            throw new JoinException(e.getMessage());
         }
     }
     public final List<T> toList(long ms) {
@@ -105,7 +107,7 @@ public abstract class AsynchronousStream<T> {
             if (!isStarted()) start();
             return (List<T>) future.get(ms,TimeUnit.MILLISECONDS);
         } catch (InterruptedException | TimeoutException | ExecutionException e) {
-            throw new RuntimeException(e);
+            throw new JoinException(e.getMessage());
         }
     }
     public final Collection<T> toCollection()  {
@@ -113,7 +115,7 @@ public abstract class AsynchronousStream<T> {
             if (!isStarted()) start();
             return (Collection<T>) future.get();
         } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
+            throw new JoinException(e.getMessage());
         }
     }
     public final Collection<T> toCollection(long ms) {
@@ -121,7 +123,7 @@ public abstract class AsynchronousStream<T> {
             if (!isStarted()) start();
             return (Collection<T>) future.get(ms,TimeUnit.MILLISECONDS);
         } catch (InterruptedException | TimeoutException | ExecutionException e) {
-            throw new RuntimeException(e);
+            throw new JoinException(e.getMessage());
         }
     }
 
@@ -266,7 +268,12 @@ public abstract class AsynchronousStream<T> {
     // Fork operations
     public AsynchronousStream<Void> fork(Function<List<T>,AsynchronousStream<?>> fn) {
         checkStarted();
-        wrap(new ForkStage<>(fn));
+        wrap(new ForkStage<T,Void>(fn));
+        return repack();
+    }
+    public <R> AsynchronousStream<R> collect(int index,Class<R> clazz) {
+        checkStarted();
+        wrap(new CollectStage<T,R>(index));
         return repack();
     }
     // Fork Operations
