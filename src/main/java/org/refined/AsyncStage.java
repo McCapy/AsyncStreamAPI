@@ -1,7 +1,6 @@
 package org.refined;
 
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.UnknownNullability;
 import org.refined.async_stages.YieldStage;
 import org.refined.exceptions.MissingSyntaxException;
 
@@ -10,7 +9,7 @@ import java.util.*;
 @SuppressWarnings({"CallToPrintStackTrace", "unused"})
 public abstract class AsyncStage<I,O> {
 
-    public abstract @NotNull List<?> compute(@NotNull AsynchronousStream<?> scope, @UnknownNullability List<?> items) throws RuntimeException;
+    public abstract @NotNull List<?> compute(@NotNull AsynchronousStream<?> scope, @NotNull List<?> items) throws RuntimeException;
 
     protected boolean catching = false;
     protected AsyncStage<?,?> next;

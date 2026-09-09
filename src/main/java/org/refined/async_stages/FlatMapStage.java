@@ -1,7 +1,6 @@
 package org.refined.async_stages;
 
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.UnknownNullability;
 import org.refined.AsyncStage;
 import org.refined.AsynchronousStream;
 
@@ -18,7 +17,7 @@ public class FlatMapStage<I, O> extends AsyncStage<I, O> {
 
     @Override
     @NotNull
-    public List<?> compute(@NotNull AsynchronousStream<?> scope, @UnknownNullability List<?> items) throws RuntimeException {
+    public List<?> compute(@NotNull AsynchronousStream<?> scope, @NotNull List<?> items) throws RuntimeException {
         return ((List<I>) items).stream().flatMap(val -> function.apply(val).stream()).toList();
     }
 }

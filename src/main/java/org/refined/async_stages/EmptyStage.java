@@ -1,7 +1,6 @@
 package org.refined.async_stages;
 
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.UnknownNullability;
 import org.refined.AsyncStage;
 import org.refined.AsynchronousStream;
 
@@ -21,7 +20,7 @@ public class EmptyStage<I, O> extends AsyncStage<I, O> {
     }
 
     @Override
-    public @NotNull List<?> compute(@NotNull AsynchronousStream<?> scope, @UnknownNullability List<?> items) throws RuntimeException {
+    public @NotNull List<?> compute(@NotNull AsynchronousStream<?> scope, @NotNull List<?> items) throws RuntimeException {
         consumer.accept((List<I>) items);
         return AsynchronousStream.EMPTY;
     }
