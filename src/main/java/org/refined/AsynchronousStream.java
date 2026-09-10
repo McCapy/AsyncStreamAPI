@@ -15,7 +15,7 @@ public abstract class AsynchronousStream<T> {
     protected AsyncStage<?,?> tail;
 
     protected CompletableFuture<List<?>> future = CompletableFuture.completedFuture(null);
-    public List<AsynchronousStream<?>> forks = new ArrayList<>(5);
+    protected List<AsynchronousStream<?>> forks = new ArrayList<>(5);
 
     // Constructors and Factory-Constructors
     public AsynchronousStream() {
