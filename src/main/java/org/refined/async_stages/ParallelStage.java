@@ -18,7 +18,7 @@ public class ParallelStage<I, O> extends AsyncStage<I, O> {
 
     @Override
     @NotNull
-    public List<?> compute(@NotNull AsynchronousStream<?> scope, @NotNull List<?> items) throws RuntimeException {
+    public List<?> compute(@NotNull AsynchronousStream<?> stream, @NotNull List<?> items) {
         return ((List<I>) items).parallelStream().map(function).toList();
     }
 }

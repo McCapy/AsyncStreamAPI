@@ -14,7 +14,7 @@ public class SubmitStage<I> extends AsyncStage<I, I> {
     }
 
     @NotNull
-    public List<?> compute(@NotNull AsynchronousStream<?> scope, @NotNull List<?> items) throws RuntimeException {
+    public List<?> compute(@NotNull AsynchronousStream<?> stream, @NotNull List<?> items) {
         runnable.run();
         return items;
     }

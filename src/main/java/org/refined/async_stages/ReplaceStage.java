@@ -21,7 +21,7 @@ public class ReplaceStage<I> extends AsyncStage<I, I> {
 
     @Override
     @NotNull
-    public List<?> compute(@NotNull AsynchronousStream<?> scope, @NotNull List<?> items) throws RuntimeException {
+    public List<?> compute(@NotNull AsynchronousStream<?> stream, @NotNull List<?> items) {
         I holder = supplier.get();
         return ((List<I>) items).stream().map((item) -> predicate.test(item) ? holder : item).toList();
     }

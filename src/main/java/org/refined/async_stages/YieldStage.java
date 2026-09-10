@@ -25,8 +25,7 @@ public class YieldStage<I> extends AsyncStage<I, I> {
     }
 
     @Override
-    @NotNull
-    public List<?> compute(@NotNull AsynchronousStream<?> scope, @NotNull List<?> items) throws RuntimeException {
+    public @NotNull List<?> compute(@NotNull AsynchronousStream<?> stream, @NotNull List<?> items) {
         return items;
     }
 }

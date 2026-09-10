@@ -21,7 +21,7 @@ public class SortStage<I> extends AsyncStage<I, I> {
 
     @Override
     @NotNull
-    public List<?> compute(@NotNull AsynchronousStream<?> scope, @NotNull List<?> items) throws RuntimeException {
+    public List<?> compute(@NotNull AsynchronousStream<?> stream, @NotNull List<?> items) {
         I[] res = (I[]) items.toArray();
         if (parallel) Arrays.parallelSort(res, comparator);
         else Arrays.sort(res, comparator);

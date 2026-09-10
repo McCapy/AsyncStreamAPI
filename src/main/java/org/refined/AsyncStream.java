@@ -166,16 +166,6 @@ public final class AsyncStream<T> extends AsynchronousStream<T> {
     }
 
     @Override
-    public <R> AsyncStream<R> collect(int index, Class<R> clazz) {
-        return (AsyncStream<R>) super.collect(index,clazz);
-    }
-
-    @Override
-    public AsyncStream<Void> fork(Function<List<T>, AsynchronousStream<?>> fn) {
-        return (AsyncStream<Void>) super.fork(fn);
-    }
-
-    @Override
     <R> AsyncStream<R> repack() {
         return (AsyncStream<R>) this;
     }

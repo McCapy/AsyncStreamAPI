@@ -18,7 +18,7 @@ public class PeekStage<I> extends AsyncStage<I, I> {
 
     @Override
     @NotNull
-    public List<?> compute(@NotNull AsynchronousStream<?> scope, @NotNull List<?> items) throws RuntimeException {
+    public List<?> compute(@NotNull AsynchronousStream<?> stream, @NotNull List<?> items) {
         ((List<I>) items).forEach(consumer);
         return items;
     }

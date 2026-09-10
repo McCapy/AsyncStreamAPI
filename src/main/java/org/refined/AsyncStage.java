@@ -1,6 +1,7 @@
 package org.refined;
 
 import org.jetbrains.annotations.NotNull;
+import org.refined.async_stages.GuardStage;
 import org.refined.async_stages.YieldStage;
 import org.refined.exceptions.MissingSyntaxException;
 
@@ -9,17 +10,24 @@ import java.util.*;
 @SuppressWarnings({"CallToPrintStackTrace", "unused"})
 public abstract class AsyncStage<I,O> {
 
-    public abstract @NotNull List<?> compute(@NotNull AsynchronousStream<?> scope, @NotNull List<?> items) throws RuntimeException;
+    public abstract @NotNull List<?> compute(@NotNull AsynchronousStream<?> stream, @NotNull List<?> items);
 
-    protected boolean catching = false;
     protected AsyncStage<?,?> next;
 
-    public final List<?> start(AsynchronousStream<?> stream, List<?> items) {
+    public final List<?> start(AsynchronousStream<?> stream, List<?> items,boolean catching) {
+        if (this instanceof GuardStage<?>) catching = true;
         try {
             try {
-                return advance(stream, compute(stream, items));
+                return advance(stream, compute(stream, items),catching);
             } catch (RuntimeException e) {
-                if (catching) return advance(stream, ((YieldStage<?>) find()).fn.apply(e));
+                if (catching) {
+                    try {
+                        while (!(next instanceof YieldStage<?>)) next = next.next;
+                    } catch (NullPointerException e1) {
+                        throw new MissingSyntaxException("No accompanying Yield to the given Guard.", e1);
+                    }
+                    return advance(stream, ((YieldStage<?>) next).fn.apply(e),false);
+                }
                 new MissingSyntaxException("An error that wasn't caught was thrown.",e).printStackTrace();
                 stream.cancel();
                 return AsynchronousStream.EMPTY;
@@ -30,18 +38,9 @@ public abstract class AsyncStage<I,O> {
             return AsynchronousStream.EMPTY;
         }
     }
-    private AsyncStage<?,?> find() throws MissingSyntaxException {
-        try {
-            AsyncStage<?, ?> current = next;
-            while (!(current instanceof YieldStage<?>)) current = current.next;
-            return current;
-        } catch (NullPointerException e) {
-            throw new MissingSyntaxException("No accompanying Yield to the given Guard.",e);
-        }
-    }
-    private List<?> advance(AsynchronousStream<?> scope,List<?> items) {
+
+    private List<?> advance(AsynchronousStream<?> scope,List<?> items,boolean catching) {
         if (next == null) return items;
-        this.next.catching = catching;
-        return next.start(scope, items);
+        return next.start(scope, items,catching);
     }
 }

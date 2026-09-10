@@ -16,7 +16,7 @@ public class ForEachStage<I, O> extends AsyncStage<I, O> {
     }
 
     @Override
-    public @NotNull List<?> compute(@NotNull AsynchronousStream<?> scope, @NotNull List<?> items) throws RuntimeException {
+    public @NotNull List<?> compute(@NotNull AsynchronousStream<?> stream, @NotNull List<?> items) {
         ((List<I>) items).forEach(consumer);
         return AsynchronousStream.EMPTY;
     }

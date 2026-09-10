@@ -9,7 +9,7 @@ import java.util.List;
 public class ReverseStage<I> extends AsyncStage<I, I> {
 
     @Override
-    public @NotNull List<?> compute(@NotNull AsynchronousStream<?> scope, @NotNull List<?> items) throws RuntimeException {
+    public @NotNull List<?> compute(@NotNull AsynchronousStream<?> stream, @NotNull List<?> items) {
         return items.reversed();
     }
 }

@@ -16,8 +16,7 @@ public class FilterStage<I> extends AsyncStage<I, I> {
     }
 
     @Override
-    @NotNull
-    public List<?> compute(@NotNull AsynchronousStream<?> scope, @NotNull List<?> items) throws RuntimeException {
+    public @NotNull List<?> compute(@NotNull AsynchronousStream<?> stream, @NotNull List<?> items) {
         return ((List<I>) items).stream().filter(predicate.negate()).toList();
     }
 }

@@ -17,7 +17,7 @@ public class FlatMapStage<I, O> extends AsyncStage<I, O> {
 
     @Override
     @NotNull
-    public List<?> compute(@NotNull AsynchronousStream<?> scope, @NotNull List<?> items) throws RuntimeException {
+    public List<?> compute(@NotNull AsynchronousStream<?> stream, @NotNull List<?> items) {
         return ((List<I>) items).stream().flatMap(val -> function.apply(val).stream()).toList();
     }
 }

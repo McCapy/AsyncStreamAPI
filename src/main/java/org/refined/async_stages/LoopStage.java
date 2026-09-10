@@ -19,7 +19,7 @@ public class LoopStage<I> extends AsyncStage<I, I> {
     }
 
     @Override
-    public @NotNull List<?> compute(@NotNull AsynchronousStream<?> scope, @NotNull List<?> items) throws RuntimeException {
+    public @NotNull List<?> compute(@NotNull AsynchronousStream<?> stream, @NotNull List<?> items) {
         List<?> result = items;
         for (int i = 0; i < repetitions; i++) result = streamFunction.apply((List<I>) result).toList();
         return result;

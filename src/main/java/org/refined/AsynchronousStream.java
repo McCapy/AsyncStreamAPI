@@ -15,17 +15,16 @@ public abstract class AsynchronousStream<T> {
     protected AsyncStage<?,?> tail;
 
     protected CompletableFuture<List<?>> future = CompletableFuture.completedFuture(null);
-    protected List<AsynchronousStream<?>> forks = new ArrayList<>(5);
 
     // Constructors and Factory-Constructors
     public AsynchronousStream() {
-        wrap(new OfferStage<T>(_ -> null));
+        checkedWrap(new OfferStage<T>(_ -> null));
     }
     public AsynchronousStream(T... values) {
-        wrap(new OfferStage<T>(_ -> Arrays.asList(values)));
+        checkedWrap(new OfferStage<T>(_ -> Arrays.asList(values)));
     }
     public AsynchronousStream(Collection<T> collection) {
-        wrap(new OfferStage<T>(_ -> new ArrayList<>(collection)));
+        checkedWrap(new OfferStage<T>(_ -> new ArrayList<>(collection)));
     }
 
     abstract <R> AsynchronousStream<R> of(Collection<R> collection);
@@ -46,12 +45,12 @@ public abstract class AsynchronousStream<T> {
     // Status Operations
     public AsynchronousStream<T> start(Executor executor)  {
         if (isStarted()) return this;
-        future = CompletableFuture.supplyAsync(() -> head.start(this,EMPTY),executor);
+        future = CompletableFuture.supplyAsync(() -> head.start(this,EMPTY,false),executor);
         return this;
     }
     public AsynchronousStream<T> start() {
         if (isStarted()) return this;
-        future = CompletableFuture.supplyAsync(() -> head.start(this,EMPTY),ForkJoinPool.commonPool());
+        future = CompletableFuture.supplyAsync(() -> head.start(this,EMPTY,false),ForkJoinPool.commonPool());
         return this;
     }
     public AsynchronousStream<T> cancel() {
@@ -126,162 +125,105 @@ public abstract class AsynchronousStream<T> {
             throw new JoinException(e.getMessage());
         }
     }
-
     // Collection Operations
 
     // Transformative Operations
     public <R> AsynchronousStream<R> map(Function<T,R> function)  {
-        checkStarted();
-        wrap(new MapStage<>(function));
-        return this.repack();
+        return checkedWrap(new MapStage<>(function));
     }
     public <R> AsynchronousStream<R> offer(R... items)  {
-        checkStarted();
-        wrap(new OfferStage<>((set) -> Arrays.asList(items)));
-        return this.repack();
+        return checkedWrap(new OfferStage<>((set) -> Arrays.asList(items)));
     }
     public <R> AsynchronousStream<R> offer(Collection<R> items)  {
-        checkStarted();
-        wrap(new OfferStage<>((set) -> new ArrayList<>(items)));
-        return this.repack();
+        return checkedWrap(new OfferStage<>((set) -> new ArrayList<>(items)));
     }
     public AsynchronousStream<T> offer(Function<List<T>,List<T>> function)  {
-        checkStarted();
-        wrap(new OfferStage<>(function));
-        return this;
+        return checkedWrap(new OfferStage<>(function));
     }
     public AsynchronousStream<Void> empty(Runnable runnable)  {
-        checkStarted();
-        wrap(new EmptyStage<>(runnable));
-        return this.repack();
+        return checkedWrap(new EmptyStage<>(runnable));
     }
     public AsynchronousStream<Void> empty()  {
-        checkStarted();
-        wrap(new EmptyStage<>(() -> {}));
-        return this.repack();
+        return checkedWrap(new EmptyStage<>(() -> {}));
     }
     public AsynchronousStream<Void> empty(Consumer<List<T>> consumer)  {
-        checkStarted();
-        wrap(new EmptyStage<>(consumer));
-        return this.repack();
+        return checkedWrap(new EmptyStage<>(consumer));
     }
     public <R> AsynchronousStream<R> flatMap(Function<T, List<R>> function)  {
-        checkStarted();
-        wrap(new FlatMapStage<>(function));
-        return this.repack();
+        return checkedWrap(new FlatMapStage<>(function));
     }
     public AsynchronousStream<T> parallelSort(Comparator<T> comparator)  {
-        checkStarted();
-        wrap(new SortStage<>(comparator,true));
-        return this;
+        return checkedWrap(new SortStage<>(comparator,true));
     }
     public AsynchronousStream<T> sort(Comparator<T> comparator)  {
-        checkStarted();
-        wrap(new SortStage<>(comparator,false));
-        return this;
+        return checkedWrap(new SortStage<>(comparator,false));
     }
     public <R> AsynchronousStream<R> parallel(Function<T,R> mapper)  {
-        checkStarted();
-        wrap(new ParallelStage<>(mapper));
-        return this.repack();
+        return checkedWrap(new ParallelStage<>(mapper));
     }
     // Transformative Operations
 
     // Iteration and Loops
     public AsynchronousStream<Void> forEach(Consumer<T> consumer)  {
-        checkStarted();
-        wrap(new ForEachStage<>(consumer));
-        return this.repack();
+        return checkedWrap(new ForEachStage<>(consumer));
     }
     public AsynchronousStream<T> peek(Consumer<T> consumer)  {
-        checkStarted();
-        wrap(new PeekStage<>(consumer));
-        return this;
+        return checkedWrap(new PeekStage<>(consumer));
     }
     public AsynchronousStream<T> loop(int repetitions,Function<List<T>,AsynchronousStream<T>> stream)  {
-        checkStarted();
-        wrap(new LoopStage<>(repetitions, stream));
-        return this.repack();
+        return checkedWrap(new LoopStage<>(repetitions, stream));
     }
     // Iteration and Loops
 
     // Miscellaneous
     public AsynchronousStream<T> submit(Runnable runnable)  {
-        checkStarted();
-        wrap(new SubmitStage<T>(runnable));
-        return this;
+        return checkedWrap(new SubmitStage<T>(runnable));
     }
     public AsynchronousStream<T> delay(Duration duration)  {
-        checkStarted();
-        wrap(new DelayStage<T>(duration));
-        return this;
+        return checkedWrap(new DelayStage<T>(duration));
     }
     public AsynchronousStream<T> reversed()  {
-        checkStarted();
-        wrap(new ReverseStage<T>());
-        return this;
+        return checkedWrap(new ReverseStage<T>());
     }
     // Miscellaneous
 
     // Error Handling
     public <R> AsynchronousStream<R> guard(Function<AsynchronousStream<T>,AsynchronousStream<R>> fn) {
-        checkStarted();
-        wrap(new GuardStage<>());
-        return fn.apply(this);
+        return fn.apply(checkedWrap(new GuardStage<>()));
+    }
+    public AsynchronousStream<T> guard() {
+        return checkedWrap(new GuardStage<>());
     }
     public AsynchronousStream<T> yield(Function<RuntimeException,List<T>> fn) {
-        checkStarted();
-        wrap(new YieldStage<>(fn));
-        return this;
+        return checkedWrap(new YieldStage<>(fn));
     }
     public AsynchronousStream<T> yield(Consumer<RuntimeException> consumer) {
-        checkStarted();
-        wrap(new YieldStage<>(err -> {
+        return checkedWrap(new YieldStage<>(err -> {
             consumer.accept(err);
             return EMPTY;
         }));
-        return repack();
     }
     // Error Handling
 
     // Conditionals
     public AsynchronousStream<T> filter(Predicate<T> predicate)  {
-        checkStarted();
-        wrap(new FilterStage<>(predicate));
-        return this;
+        return checkedWrap(new FilterStage<>(predicate));
     }
     public AsynchronousStream<T> replace(Predicate<T> predicate, T replacement)  {
-        checkStarted();
-        wrap(new ReplaceStage<>(predicate,() -> replacement));
-        return this;
+        return checkedWrap(new ReplaceStage<>(predicate,() -> replacement));
     }
     public AsynchronousStream<T> replace(Predicate<T> predicate, Supplier<T> replacement)  {
-        checkStarted();
-        wrap(new ReplaceStage<>(predicate,replacement));
-        return this;
+        return checkedWrap(new ReplaceStage<>(predicate,replacement));
     }
     // Conditionals
 
+    // Event Operations (surely I'll finish this eventually)
     // Event Operations
-    // Event Operations
-
-    // Fork operations
-    public AsynchronousStream<Void> fork(Function<List<T>,AsynchronousStream<?>> fn) {
-        checkStarted();
-        wrap(new ForkStage<T,Void>(fn));
-        return repack();
-    }
-    public <R> AsynchronousStream<R> collect(int index,Class<R> clazz) {
-        checkStarted();
-        wrap(new CollectStage<T,R>(index));
-        return repack();
-    }
-    // Fork Operations
 
     abstract <R> AsynchronousStream<R> repack();
 
     public static final List<?> EMPTY = new ArrayList<>(1);
-    private void wrap(AsyncStage<?,?> stage) {
+    public <X> AsynchronousStream<X> wrap(AsyncStage<?,?> stage) {
         if (head == null) {
             head = stage;
         }
@@ -289,8 +231,13 @@ public abstract class AsynchronousStream<T> {
             tail.next = stage;
         }
         tail = stage;
+        return (AsynchronousStream<X>) this;
     }
-    private void checkStarted() {
+    public <X> AsynchronousStream<X> checkedWrap(AsyncStage<?,?> stage) {
+        if (isStarted()) throw new RuntimeException("You cannot add operations during execution, unless enacted by an AsyncStage");
+        return wrap(stage);
+    }
+    private void check() {
         if (isStarted())
             throw new RuntimeException(
                 "You cannot add operations during execution, unless enacted by an AsyncStage"
