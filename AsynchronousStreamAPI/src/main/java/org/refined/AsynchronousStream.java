@@ -1,6 +1,6 @@
 package org.refined;
 
-import org.refined.annotation_processor.Insertion;
+import org.refined.annotation_processor.Generates;
 import org.refined.async_stages.*;
 import org.refined.exceptions.JoinException;
 
@@ -9,9 +9,198 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.*;
 
+@Generates("""
+            @Artificial("Default Implementation")
+            public AsyncStream() {
+                super();
+            }
+    
+            @Artificial("Default Implementation")
+            public AsyncStream(T... values) {
+                super(values);
+            }
+    
+            @Artificial("Default Implementation")
+            public AsyncStream(Collection<T> collection) {
+                super(collection);
+            }
+        
+            @Artificial("Default Implementation")
+            @Override
+            public <R> AsyncStream<R> of(Collection<R> collection) {
+                return new AsyncStream<>(collection);
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public <R> AsyncStream<R> of(R... values) {
+                return new AsyncStream<>(values);
+            }
+        
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<Void> ofEmpty() {
+                return new AsyncStream<>();
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<T> yield(Consumer<RuntimeException> consumer) {
+                return (AsyncStream<T>) super.yield(consumer);
+            }
+        
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<T> yield(Function<RuntimeException, List<T>> fn) {
+                return (AsyncStream<T>) super.yield(fn);
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public <R> AsyncStream<R> guard(Function<org.refined.AsynchronousStream<T>, org.refined.AsynchronousStream<R>> fn) {
+                return (AsyncStream<R>) super.guard(fn);
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<T> start() {
+                return (AsyncStream<T>) super.start();
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<T> start(Executor executor) {
+                return (AsyncStream<T>) super.start(executor);
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<T> cancel() {
+                return (AsyncStream<T>) super.cancel();
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<T> filter(Predicate<T> predicate) {
+                return (AsyncStream<T>) super.filter(predicate);
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public <R> AsyncStream<R> map(Function<T, R> function) {
+                return (AsyncStream<R>) super.map(function);
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public <R> AsyncStream<R> offer(R... items) {
+                return (AsyncStream<R>) super.offer(items);
+            }
+        
+            @Artificial("Default Implementation")
+            @Override
+            public <R> AsyncStream<R> offer(Collection<R> items) {
+                return (AsyncStream<R>) super.offer(items);
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<T> offer(Function<List<T>, List<T>> function) {
+                return (AsyncStream<T>) super.offer(function);
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<Void> empty(Runnable runnable) {
+                return (AsyncStream<Void>) super.empty(runnable);
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<Void> empty() {
+                return (AsyncStream<Void>) super.empty();
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<Void> empty(Consumer<List<T>> consumer) {
+                return (AsyncStream<Void>) super.empty(consumer);
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public <R> AsyncStream<R> flatMap(Function<T, List<R>> function) {
+                return (AsyncStream<R>) super.flatMap(function);
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<T> parallelSort(Comparator<T> comparator) {
+                return (AsyncStream<T>) super.parallelSort(comparator);
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<T> sort(Comparator<T> comparator) {
+                return (AsyncStream<T>) super.sort(comparator);
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public <R> AsyncStream<R> parallel(Function<T, R> mapper) {
+                return (AsyncStream<R>) super.parallel(mapper);
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<Void> forEach(Consumer<T> consumer) {
+                return (AsyncStream<Void>) super.forEach(consumer);
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<T> peek(Consumer<T> consumer) {
+                return (AsyncStream<T>) super.peek(consumer);
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<T> loop(int repetitions, Function<List<T>, org.refined.AsynchronousStream<T>> stream) {
+                return (AsyncStream<T>) super.loop(repetitions, stream);
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<T> submit(Runnable runnable) {
+                return (AsyncStream<T>) super.submit(runnable);
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<T> delay(Duration duration) {
+                return (AsyncStream<T>) super.delay(duration);
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<T> reversed() {
+                return (AsyncStream<T>) super.reversed();
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<T> replace(Predicate<T> predicate, T replacement) {
+                return (AsyncStream<T>) super.replace(predicate, replacement);
+            }
+    
+            @Artificial("Default Implementation")
+            @Override
+            public AsyncStream<T> replace(Predicate<T> predicate, Supplier<T> replacement) {
+                return (AsyncStream<T>) super.replace(predicate, replacement);
+            }
+        """)
 @SuppressWarnings({"unchecked", "unused"})
 public abstract class AsynchronousStream<T> {
-
     protected AsyncStage<?,?> head;
     protected AsyncStage<?,?> tail;
 
@@ -223,7 +412,7 @@ public abstract class AsynchronousStream<T> {
 
 
     public static final List<?> EMPTY = new ArrayList<>(1);
-    public <X> AsynchronousStream<X> wrap(AsyncStage<?,?> stage) {
+    <X> AsynchronousStream<X> wrap(AsyncStage<?,?> stage) {
         if (head == null) {
             head = stage;
         }
@@ -233,7 +422,7 @@ public abstract class AsynchronousStream<T> {
         tail = stage;
         return (AsynchronousStream<X>) this;
     }
-    public <X> AsynchronousStream<X> checkedWrap(AsyncStage<?,?> stage) {
+    <X> AsynchronousStream<X> checkedWrap(AsyncStage<?,?> stage) {
         if (isStarted()) throw new RuntimeException("You cannot add operations during execution, unless enacted by an org.refined.AsyncStage");
         return wrap(stage);
     }
@@ -242,9 +431,5 @@ public abstract class AsynchronousStream<T> {
             throw new RuntimeException(
                 "You cannot add operations during execution, unless enacted by an org.refined.AsyncStage"
             );
-    }
-    @Insertion("wrap")
-    public void testWrap(AsyncStage<?,?> stage) {
-        checkedWrap(stage);
     }
 }
