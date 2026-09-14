@@ -1,5 +1,6 @@
 package org.refined;
 
+import org.refined.annotation_processor.Insertion;
 import org.refined.async_stages.*;
 import org.refined.exceptions.JoinException;
 
@@ -220,7 +221,6 @@ public abstract class AsynchronousStream<T> {
     // Event Operations (surely I'll finish this eventually)
     // Event Operations
 
-    abstract <R> AsynchronousStream<R> repack();
 
     public static final List<?> EMPTY = new ArrayList<>(1);
     public <X> AsynchronousStream<X> wrap(AsyncStage<?,?> stage) {
@@ -234,13 +234,17 @@ public abstract class AsynchronousStream<T> {
         return (AsynchronousStream<X>) this;
     }
     public <X> AsynchronousStream<X> checkedWrap(AsyncStage<?,?> stage) {
-        if (isStarted()) throw new RuntimeException("You cannot add operations during execution, unless enacted by an AsyncStage");
+        if (isStarted()) throw new RuntimeException("You cannot add operations during execution, unless enacted by an org.refined.AsyncStage");
         return wrap(stage);
     }
     private void check() {
         if (isStarted())
             throw new RuntimeException(
-                "You cannot add operations during execution, unless enacted by an AsyncStage"
+                "You cannot add operations during execution, unless enacted by an org.refined.AsyncStage"
             );
+    }
+    @Insertion("wrap")
+    public void testWrap(AsyncStage<?,?> stage) {
+        checkedWrap(stage);
     }
 }

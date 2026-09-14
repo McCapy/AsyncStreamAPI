@@ -1,4 +1,4 @@
-# AsynchronousStream-API
+# org.refined.AsynchronousStream-API
 
 >
 > [!NOTE]

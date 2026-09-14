@@ -17,8 +17,7 @@ public class MapStage<I, O> extends AsyncStage<I, O> {
     }
 
     @Override
-    @NotNull
-    public List<?> compute(@NotNull AsynchronousStream<?> stream, @NotNull List<?> items) {
+    public @NotNull List<?> compute(@NotNull AsynchronousStream<?> stream, @NotNull List<?> items) {
         return ((List<I>) items).stream().map(function).toList();
     }
 }
