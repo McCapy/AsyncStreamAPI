@@ -12,7 +12,7 @@ import java.io.Writer;
 import java.util.Set;
 
 @SupportedAnnotationTypes({"org.refined.annotation_processor.Generates"})
-@SupportedSourceVersion(SourceVersion.RELEASE_26)
+@SupportedSourceVersion(SourceVersion.RELEASE_21)
 @AutoService(Processor.class)
 public class GenerationProcessor extends AbstractProcessor {
     private static String result = """
@@ -40,7 +40,7 @@ public class GenerationProcessor extends AbstractProcessor {
         if (file != null) file.delete();
         try (Writer writer = (file = processingEnv.getFiler().createSourceFile("org.refined.AsyncStream")).openWriter()) {
             writer.write(result.formatted(""));
-        } catch (IOException _) {}
+        } catch (IOException ignored) {}
         return true;
     }
 }

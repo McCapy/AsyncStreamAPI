@@ -199,7 +199,7 @@ import java.util.function.*;
                 return (AsyncStream<T>) super.replace(predicate, replacement);
             }
         """)
-@SuppressWarnings({"unchecked", "unused"})
+@SuppressWarnings({"unchecked", "unused", "UnusedReturnValue"})
 public abstract class AsynchronousStream<T> {
     protected AsyncStage<?,?> head;
     protected AsyncStage<?,?> tail;
@@ -208,13 +208,13 @@ public abstract class AsynchronousStream<T> {
 
     // Constructors and Factory-Constructors
     public AsynchronousStream() {
-        checkedWrap(new OfferStage<T>(_ -> null));
+        checkedWrap(new OfferStage<T>(ignored -> null));
     }
     public AsynchronousStream(T... values) {
-        checkedWrap(new OfferStage<T>(_ -> Arrays.asList(values)));
+        checkedWrap(new OfferStage<T>(ignored -> Arrays.asList(values)));
     }
     public AsynchronousStream(Collection<T> collection) {
-        checkedWrap(new OfferStage<T>(_ -> new ArrayList<>(collection)));
+        checkedWrap(new OfferStage<T>(ignored -> new ArrayList<>(collection)));
     }
 
     abstract <R> AsynchronousStream<R> of(Collection<R> collection);

@@ -12,7 +12,7 @@ public class EmptyStage<I, O> extends AsyncStage<I, O> {
     final Consumer<List<I>> consumer;
 
     public EmptyStage(Runnable runnable) {
-        this.consumer = (_ -> runnable.run());
+        this.consumer = (ignored -> runnable.run());
     }
 
     public EmptyStage(Consumer<List<I>> consumer) {
