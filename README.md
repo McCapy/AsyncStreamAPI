@@ -1,4 +1,4 @@
-# org.refined.AsynchronousStream-API
+# AsynchronousStream-API
 
 >
 > [!NOTE]
@@ -13,14 +13,15 @@
 > | `new AsyncStream<>()`              | Returns a stream of type `Void` |
 > | `new AsyncStream<>(Collection<T>)` | Returns a stream of type `T`    |
 > | `new AsyncStream<>(T...)`          | Returns a stream of type `T`    |
+> | `AsyncStream.of(Collection<R>)`    | Returns a stream of type `R`    |
+> | `AsyncStream.of(R... values)`      | Returns a stream of type `R`    | 
+| | `AsyncStream.ofEmpty()`            | Returns a stream of type `Void` |  
 
->
 > [!NOTE]
 > An example using all of these will be supplied below.\
 > If you have any questions regarding any, whether that\
 > be usage or functionality, a deep explanation will be\
 > supplied, as well as a deep, realistic use-case.
->
 
 > [!NOTE]
 > You *MUST* remember to catch errors on potentially\
@@ -68,38 +69,6 @@
 > | `.collect(Class<T>,String... ids)`                         | Forking Operation      | Gathers the results of the supplied forked tasks in the order as supplied in the `ids` array.                                            |
 
 ## Operation Usages
-#### Forking Operations
-```java
-void main() {
-    List<Integer> result =
-        new AsyncStream<>(1,2,3,4,5,6,7,8,9,10)
-            .forkEach(item -> {
-                return
-                    new AsyncStream<>(item)
-                        .map(other -> other * 10);
-            })
-            .gather(Integer.class)
-            .toList();
-}
-        // This creates 10 forks, and gathers all of them together,
-        // with a result of: List<Integer>{10,20,30,40,50,60,70,80,90,100}
-```
-```java
-void main() {
-    List<Integer> result =
-        new AsyncStream<>(1,2,3,4,5)
-            .fork("example-id",items ->
-                new AsyncStream<>(items)
-                    .map(item -> item * 10)
-            )
-            // Here is where you would do other work, that is independent of that calculation
-            // Although after this work is done you can gather the
-            // result of the given fork and merge it with the result of the collection.
-            .collect(Integer.class,"example-id")
-            .toList();
-}
-// This creates 1 fork, which handles the work of mapping all 5 items to <item> * 10
-```
 #### Intermediate Operations
 ```java
 void main() {
@@ -110,7 +79,7 @@ void main() {
             .reversed()
             .toList();
 }
-// This multiples each item by two in a separate stream,
+// This multiplies each item by two in a separate stream,
 // and then flattens it back into AsyncStream<Integer> and then
 // reverses it for the result of: List<Integer>{10,8,6,4,2}
 ```
@@ -132,23 +101,6 @@ void main() {
             .toList();
 }
     // Adds 10 to every item in the stream (via a loop) and then converts it into a list.
-```
-```java
-void main() {
-    List<Integer> result =
-        new AsyncStream<>(1,2,3,4,5)
-            .map(item -> {
-                if (item == 3) throw new RuntimeException("EXAMPLE!");
-                return item * 2;
-            })
-            .intercept((error,scope) -> {
-                error.printStackTrace();
-                scope.cancel();
-            })
-            .toList();
-    // This is essentially the same as the latter, although it cancels the stream instead of returning
-    // a default value, which can be useful in some cases.
-}
 ```
 ```java
 void main() {
@@ -175,3 +127,46 @@ void main() {
     
 }
 ```
+## Public API
+This is probably the Hardest part of the AsynchronousStreamAPI
+It allows you to generate just about anything in the AsyncStream 
+class, Naturally this does come with some setbacks, Namely: we 
+must use annotation processing which can be a bit hard to use at times
+
+The simple way to use it though will be shown below.
+
+```java
+public class MethodHolder {
+    @Generates("""
+              @Artificial("Made via generator")
+              public AsyncStream<T> example(int value) {
+                  System.out.println("Received value: " + value);
+                  return this;
+              }
+              """)
+    public void doNothing() { }
+}
+```
+
+You're going to see a pretty big issue here, the annotation is attached 
+to a method that does... nothing?? Yes, unfortunately it must (due to how 
+annotations work in general), although it can be attached to fields,
+classes, and just about anything, it is not a repeatable annotation, however.
+While it is a planned change to make it repeatable it isn't feasible right now.
+
+Although instead of having a method that does nothing, you can instead attach it
+to a class, so you're not making no-opp methods & fields.
+
+## Why use it?
+
+The reason this part of the API was made, is you get to make your own
+methods without the need to extend & override or create more, this is
+mainly meant to be a convenience thing, ALTHOUGH, it also allows for
+your own, custom, functionality to be added to the AsyncStreamAPI.
+
+The way we use it in this case, is simply executing the maven goal,
+```bat
+mvn clean install
+```
+this, will cause the changes you made to appear, allowing you to use
+the methods you (and others) have generated.
