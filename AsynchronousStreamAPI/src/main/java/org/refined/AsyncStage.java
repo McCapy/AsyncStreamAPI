@@ -1,6 +1,7 @@
 package org.refined;
 
 import org.jetbrains.annotations.NotNull;
+import org.refined.annotation_processor.SupportsGeneration;
 import org.refined.async_stages.GuardStage;
 import org.refined.async_stages.YieldStage;
 import org.refined.exceptions.MissingSyntaxException;

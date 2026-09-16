@@ -1,14 +1,11 @@
 package org.refined.annotation_processor;
 
 import com.google.auto.service.AutoService;
-import com.sun.jdi.ClassType;
-import org.refined.SupportsGeneration;
 
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;

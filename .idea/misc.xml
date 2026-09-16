@@ -7,12 +7,16 @@
         <option value="$PROJECT_DIR$/pom.xml" />
       </list>
     </option>
+    <option name="ignoredFiles">
+      <set>
+        <option value="$PROJECT_DIR$/TestCase/pom.xml" />
+      </set>
+    </option>
   </component>
   <component name="PrintToLogpointModuleInspectionState">
     <option name="disabledModuleNames">
       <set>
         <option value="Executor" />
-        <option value="TestCase" />
       </set>
     </option>
   </component>
