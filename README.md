@@ -1,5 +1,29 @@
 # AsynchronousStream-API
 
+
+>
+>[!WARNING]
+> If you're using code generation you **MUST** make sure to include the annotation processor. Below is how to use both for your projects. Make note you must have the dependency for the AsyncStreamAPI as well for this to be validated.
+> ```xml
+> <build>
+>        <plugins>
+>            <plugin>
+>                <groupId>org.apache.maven.plugins</groupId>
+>                <artifactId>maven-compiler-plugin</artifactId>
+>                <version>3.13.0</version>
+>                <configuration>
+>                    <annotationProcessorPaths>
+>                        <path>
+>                            <groupId>org.refined.executable</groupId>
+>                            <artifactId>AnnotationProcessor</artifactId>
+>                            <version>1.0-SNAPSHOT</version>
+>                        </path>
+>                    </annotationProcessorPaths>
+>                </configuration>
+>            </plugin>
+>        </plugins>
+>    </build>
+> ```
 >
 > [!NOTE]
 > This is using the default implementation, AsyncStream<?>\
