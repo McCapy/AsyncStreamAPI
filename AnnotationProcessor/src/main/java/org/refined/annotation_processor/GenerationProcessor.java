@@ -18,7 +18,8 @@ import java.util.Set;
 @AutoService(Processor.class)
 
 public class GenerationProcessor extends AbstractProcessor {
-    private static String result = """
+    private static String result =
+            """
             package org.refined;
             
             import org.refined.annotation_processor.Artificial;
@@ -31,7 +32,6 @@ public class GenerationProcessor extends AbstractProcessor {
             import java.util.function.*;
             %s
             
-            @Artificial("See documentation.")
             public final class AsyncStream<T> extends org.refined.AsynchronousStream<T> {
                    public AsyncStream() {
                        super();
@@ -206,15 +206,10 @@ public class GenerationProcessor extends AbstractProcessor {
             }
             else messager.printMessage(Diagnostic.Kind.ERROR, "Super of class does not support generation.", e);
         }
-
-        if (file != null) {
-            file.delete();
-        }
-
+        if (file != null) file.delete();
         try (Writer writer = (file = processingEnv.getFiler().createSourceFile("org.refined.AsyncStream")).openWriter()) {
             writer.write(result.formatted("", ""));
-        } catch (IOException ignored) {
-        }
+        } catch (IOException ignored) {}
 
         return true;
     }
