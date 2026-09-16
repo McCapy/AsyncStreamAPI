@@ -7,7 +7,7 @@ import org.refined.exceptions.MissingSyntaxException;
 
 import java.util.*;
 
-@SuppressWarnings({"CallToPrintStackTrace", "unused"})
+@SupportsGeneration
 public abstract class AsyncStage<I,O> {
 
     public abstract @NotNull List<?> compute(@NotNull AsynchronousStream<?> stream, @NotNull List<?> items);

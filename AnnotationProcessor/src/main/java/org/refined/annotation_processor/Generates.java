@@ -17,7 +17,8 @@ import java.lang.annotation.*;
 /// make with: @Artificial(String message) this just lets
 /// users know that it was generated externally.
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.FIELD, ElementType.METHOD,ElementType.ANNOTATION_TYPE,ElementType.TYPE})
+@Target({ElementType.TYPE})
 public @interface Generates {
-    @NotNull String value();
+    String generates();
+    @NotNull String imports() default "";
 }

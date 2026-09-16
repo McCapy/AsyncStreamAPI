@@ -12,6 +12,7 @@
     <option name="disabledModuleNames">
       <set>
         <option value="Executor" />
+        <option value="TestCase" />
       </set>
     </option>
   </component>

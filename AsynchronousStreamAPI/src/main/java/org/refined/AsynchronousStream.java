@@ -1,6 +1,5 @@
 package org.refined;
 
-import org.refined.annotation_processor.Generates;
 import org.refined.async_stages.*;
 import org.refined.exceptions.JoinException;
 
@@ -233,13 +232,7 @@ public abstract class AsynchronousStream<T> {
         return (AsynchronousStream<X>) this;
     }
     <X> AsynchronousStream<X> checkedWrap(AsyncStage<?,?> stage) {
-        if (isStarted()) throw new RuntimeException("You cannot add operations during execution, unless enacted by an org.refined.AsyncStage");
+        if (isStarted()) throw new RuntimeException("You cannot add operations during execution, unless enacted by an AsyncStage");
         return wrap(stage);
-    }
-    private void check() {
-        if (isStarted())
-            throw new RuntimeException(
-                "You cannot add operations during execution, unless enacted by an org.refined.AsyncStage"
-            );
     }
 }
