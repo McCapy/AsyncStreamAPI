@@ -37,6 +37,3 @@ build/
 
 ### Mac OS ###
 .DS_Store
-
-### Class Files ###
-/TestCase/
