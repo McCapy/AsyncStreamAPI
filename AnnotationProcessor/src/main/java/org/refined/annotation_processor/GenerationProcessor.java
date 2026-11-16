@@ -5,11 +5,15 @@ import com.google.auto.service.AutoService;
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
+import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
+import javax.tools.StandardLocation;
 import java.io.IOException;
+import java.io.Reader;
 import java.io.Writer;
 import java.util.Set;
 
@@ -194,6 +198,23 @@ public class GenerationProcessor extends AbstractProcessor {
             """;
 
     private static JavaFileObject file;
+
+    private String loadSource(TypeElement typeElement) throws IOException {
+        final FileObject source = processingEnv.getFiler().getResource(
+                StandardLocation.SOURCE_PATH,
+                ((PackageElement) typeElement.getEnclosingElement()).getQualifiedName(),
+                typeElement.getSimpleName() + ".java");
+
+        try (Reader reader = source.openReader(true)) {
+            final StringBuilder builder = new StringBuilder();
+            final char[] buf = new char[1024];
+            int read;
+            while ((read = reader.read(buf)) != -1) {
+                builder.append(buf, 0, read);
+            }
+            return builder.toString();
+        }
+    }
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
